@@ -1,9 +1,16 @@
 {
-  "name": "Front18 Security Integration",
+  "name": "Front18 WP Plugin",
+  "slug": "front18-wp-plugin",
   "version": "1.0.0",
-  "download_url": "https://github.com/SEU-USUARIO/SEU-REPOSITORIO/releases/download/v1.0.0/front18-wp-plugin.zip",
+  "author": "B20 Agência",
+  "download_url": "https://github.com/b20agencia/front18-wp-plugin/releases/download/v1.0.0/front18-wp-plugin.zip",
+  "requires": "6.0",
+  "tested": "6.5",
+  "requires_php": "7.4",
+  "last_updated": "2026-04-02",
+  "homepage": "https://github.com/b20agencia/front18-wp-plugin",
   "sections": {
-    "description": "O motor de segurança definitiva para o SDK.",
-    "changelog": "https://raw.githubusercontent.com/SEU-USUARIO/SEU-REPOSITORIO/main/changelog.txt"
+    "description": "Integração Front18 com WordPress.",
+    "changelog": "<h4>1.0.0</h4><ul><li>Primeira versão pública do plugin.</li></ul>"
   }
 }

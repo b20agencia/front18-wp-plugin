@@ -23,22 +23,20 @@ define( 'FRONT18_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'FRONT18_OPTION_GROUP', 'front18_options_group' );
 
 // ==============================================================================
-// 2. Suporte Futuro: Plugin Update Checker (Atualizações via GitHub)
+// 2. Integração com GitHub: Plugin Update Checker (Atualizações Automáticas)
 // ==============================================================================
-/*
-// NOTA DE IMPLEMENTAÇÃO:
-// Quando o repositório estiver público e você rodar o comando "composer require yahnis-elsts/plugin-update-checker"
-// ou baixar o ZIP na pasta plugin-update-checker, remova os comentários abaixo e altere a URL do update.json.
+$puc_path = FRONT18_PLUGIN_DIR . 'plugin-update-checker/plugin-update-checker.php';
 
-require_once FRONT18_PLUGIN_DIR . 'plugin-update-checker/plugin-update-checker.php';
-use YahnisElsts\PluginUpdateChecker\v5\PucFactory;
-
-$myUpdateChecker = PucFactory::buildUpdateChecker(
-    'https://raw.githubusercontent.com/SEU-USUARIO/SEU-REPOSITORIO/main/update.json',
-    __FILE__,
-    'front18-wp-plugin'
-);
-*/
+// Verificamos de modo seguro se a biblioteca foi baixada/inserida na pasta para não quebrar o site
+if ( file_exists( $puc_path ) ) {
+    require_once $puc_path;
+    
+    $myUpdateChecker = \YahnisElsts\PluginUpdateChecker\v5\PucFactory::buildUpdateChecker(
+        'https://raw.githubusercontent.com/b20agencia/front18-wp-plugin/main/update.json',
+        __FILE__,
+        'front18-wp-plugin'
+    );
+} // Fim P.U.C
 
 // ==============================================================================
 // 3. Hooks de Ativação e Desativação

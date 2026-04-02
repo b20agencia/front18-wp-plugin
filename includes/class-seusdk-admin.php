@@ -58,7 +58,7 @@ class Front18_Admin {
             'manage_options',
             'front18-integration',
             array( $this, 'render_admin_page' ),
-            'dashicons-shield',
+            FRONT18_PLUGIN_URL . 'assets/favicon.png', // Utiliza o ícone visual oficial do produto
             80
         );
     }
@@ -235,6 +235,7 @@ class Front18_Admin {
         <div class="wrap front18-admin-wrap">
             <div class="front18-glass-panel">
                 <div class="front18-header">
+                    <img src="<?php echo esc_url( FRONT18_PLUGIN_URL . 'assets/logo.png' ); ?>" alt="Front18 Security Logo" style="max-height: 55px; margin-bottom: 20px; display: block; margin-left: auto; margin-right: auto;" />
                     <h1><?php esc_html_e( 'Front18 Security', 'front18' ); ?></h1>
                     <p><?php esc_html_e( 'O MasterHub corporativo atuando dentro do seu WordPress. Total opacidade antes mesmo da página renderizar.', 'front18' ); ?></p>
                 </div>

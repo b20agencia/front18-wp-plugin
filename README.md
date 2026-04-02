@@ -31,19 +31,11 @@ Logo após a ativação, um novo botão brilhante aparecerá flutuando sob a aba
    - *(Você notará uma Placa Vermelha enorme e intransponível alertando que o plugin não protegerá nada até que uma Chave válida preencha esse campo).*
 3. Ao preencher, clique no botão azul de Salvar no rodapé. A placa ficará instantaneamente verde (**🟢 Protegendo este site**).
 
-### Passo B: Definir "Onde" Rola a Proteção
-No cartão **Onde aplicar a Proteção?**, você define o escopo do SaaS:
-- **Força Bruta Global:** Bloqueia automaticamente o site de cabo a rabo na escuridão, incluindo URLS dinâmicas de buscas de produtos e autores.
-- **Página Inicial:** Mantém o restante da loja solto e restringe o escudo apenas à Home ("Vitrine mestre").
-- **Tipos de Posts (Granular):** Acenda os toggles para blindar em massa entidades nativas: *Posts*, *Páginas*, e se você tiver e-commerce instalado, o glorioso escopo *Produtos (WooCommerce)* acenderá automaticamente.
-
-### Passo C: Override Cirúrgico (Busca Ajax/Blacklist)
-Se você decidiu travar o **Site Inteiro (Escopo Global)**, mas não quer trancar usuários que desejam ler a sua **Política de Privacidade** ou **FAQ** corporativo...
-1. Desça até o cartão de finalidades: **"Override Cirúrgico"**.
-2. Na caixa verde de **Liberar IDs Seguros**, clique e digite "Privacidade" (Mínimo 3 letras).
-3. O Smart Search do WordPress fará uma busca super-rápida. Selecione o artigo. Pronto: Regra quebrada. A página de privacidade sobrepõe as amarras do Front18.
-
-*(Ps: O mesmo sistema vale via Caixa Vermelha (Blacklist), excelente para blindar manualmente de 1 em 1 apenas aqueles "Cinco Artigos Exclusivos" do Fórum sem blindar o Global).*
+### Passo B: Sincronização com a Nuvem (SaaS)
+No cartão **Nuvem Front18 (SaaS)**, você notará que não precisa configurar mais nada manualmente! 
+A arquitetura agora é feita em Nuvem:
+- As regras de bloqueio (se deve bloquear a Home, todas as Páginas ou apenas artigos específicos) agora são gerenciadas com máxima facilidade diretamente pelo painel oficial do **front18.com**.
+- Quando seu SaaS emitir uma nova regra, o SDK aplicará em tempo real. Você pode pressionar o botão **"Sincronizar Agora"** no WordPress caso queira forçar uma atualização instantânea local de fallback.
 
 ---
 
