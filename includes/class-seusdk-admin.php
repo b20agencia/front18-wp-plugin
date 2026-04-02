@@ -7,6 +7,9 @@ class Front18_Admin {
         add_action( 'admin_menu', array( $this, 'add_menu_page' ) );
         add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_admin_scripts' ) );
         
+        // CSS Global para travar o Tamanho do Ícone na Sidebar (20x20 pixels strict)
+        add_action( 'admin_head', array( $this, 'fix_menu_icon_size' ) );
+        
         // AJAX Endpoints
         add_action( 'wp_ajax_front18_search_posts', array( $this, 'ajax_search_posts' ) );
         add_action( 'wp_ajax_front18_sync_now', array( $this, 'ajax_sync_now' ) );
@@ -14,6 +17,11 @@ class Front18_Admin {
         // Meta Box for Individual Pages
         add_action( 'add_meta_boxes', array( $this, 'add_post_meta_boxes' ) );
         add_action( 'save_post', array( $this, 'save_post_meta_boxes' ) );
+    }
+
+    public function fix_menu_icon_size() {
+        // Trava de prioridade CSS para contornar qualquer bug nativo das antigas branches do wp-admin
+        echo '<style>#toplevel_page_front18-integration .wp-menu-image img { max-width: 20px !important; max-height: 20px !important; object-fit: contain; margin-top: -2px; }</style>';
     }
 
     public function register_settings() {
@@ -236,7 +244,6 @@ class Front18_Admin {
             <div class="front18-glass-panel">
                 <div class="front18-header">
                     <img src="<?php echo esc_url( FRONT18_PLUGIN_URL . 'assets/logo.png' ); ?>" alt="Front18 Security Logo" style="max-height: 55px; margin-bottom: 20px; display: block; margin-left: auto; margin-right: auto;" />
-                    <h1><?php esc_html_e( 'Front18 Security', 'front18' ); ?></h1>
                     <p><?php esc_html_e( 'O MasterHub corporativo atuando dentro do seu WordPress. Total opacidade antes mesmo da página renderizar.', 'front18' ); ?></p>
                 </div>
     
