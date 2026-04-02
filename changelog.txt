@@ -1,0 +1,7 @@
+=== Front18 Security Integration Changelog ===
+
+= 1.0.0 =
+* Lançamento da nova infraestrutura.
+* Otimização do carregamento (Autoload/Lazy load) de classes.
+* Preparação para o GitHub e atualizações automáticas via integração P.U.C.
+* Melhorias na arquitetura e inicialização sob demanda.

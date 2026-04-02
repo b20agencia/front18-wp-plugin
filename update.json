@@ -1,0 +1,9 @@
+{
+  "name": "Front18 Security Integration",
+  "version": "1.0.0",
+  "download_url": "https://github.com/SEU-USUARIO/SEU-REPOSITORIO/releases/download/v1.0.0/front18-wp-plugin.zip",
+  "sections": {
+    "description": "O motor de segurança definitiva para o SDK.",
+    "changelog": "https://raw.githubusercontent.com/SEU-USUARIO/SEU-REPOSITORIO/main/changelog.txt"
+  }
+}

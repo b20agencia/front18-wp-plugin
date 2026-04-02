@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manual do Usuário - Front18 Security</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-canvas: #0B0E11;
+            --bg-surface: #1A1F25;
+            --primary-accent: #00DD80;
+            --primary-hover: #00C270;
+            --text-main: #FFFFFF;
+            --text-muted: #94A3B8;
+            --border-subtle: rgba(255, 255, 255, 0.1);
+            --shadow-glow: rgba(0, 221, 128, 0.2);
+            --danger-accent: #ff4757;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            line-height: 1.6;
+            color: var(--text-main);
+            background-color: var(--bg-canvas);
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .header-glass {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(12px);
+            background-color: rgba(11, 14, 17, 0.8);
+            border-bottom: 1px solid var(--border-subtle);
+            padding: 20px 40px;
+            text-align: center;
+        }
+
+        .header-glass h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+        }
+
+        .header-glass span {
+            color: var(--primary-accent);
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 60px auto;
+            padding: 0 20px;
+        }
+
+        .hero {
+            text-align: center;
+            margin-bottom: 80px;
+        }
+        
+        .hero-badge {
+            display: inline-block;
+            background: rgba(0, 221, 128, 0.1);
+            color: var(--primary-accent);
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            border: 1px solid rgba(0, 221, 128, 0.2);
+        }
+
+        h1 {
+            font-size: 42px;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            line-height: 1.2;
+            margin-bottom: 20px;
+        }
+
+        h2 {
+            font-size: 28px;
+            font-weight: 800;
+            color: var(--text-main);
+            margin-top: 60px;
+            margin-bottom: 24px;
+            border-bottom: 1px solid var(--border-subtle);
+            padding-bottom: 12px;
+        }
+
+        p {
+            color: var(--text-muted);
+            font-size: 16px;
+            margin-bottom: 20px;
+        }
+
+        .card {
+            background-color: var(--bg-surface);
+            border-radius: 16px;
+            border: 1px solid var(--border-subtle);
+            padding: 32px;
+            margin-bottom: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+            transition: transform 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+        }
+
+        .card h3 {
+            color: var(--text-main);
+            font-size: 20px;
+            font-weight: 700;
+            margin-top: 0;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* Success Card Styling */
+        .card-success {
+            border-left: 4px solid var(--primary-accent);
+        }
+        
+        .card-success h3 {
+            color: var(--primary-accent);
+        }
+
+        /* Danger Card Styling */
+        .card-danger {
+            border-left: 4px solid var(--danger-accent);
+        }
+
+        .card-danger h3 {
+            color: var(--danger-accent);
+        }
+
+        ul, ol {
+            padding-left: 24px;
+            color: var(--text-muted);
+        }
+
+        li {
+            margin-bottom: 12px;
+        }
+
+        strong {
+            color: var(--text-main);
+        }
+
+        code {
+            background-color: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-subtle);
+            padding: 4px 8px;
+            border-radius: 6px;
+            color: var(--primary-accent);
+            font-family: monospace;
+            font-size: 14px;
+        }
+
+        .btn-goadopt {
+            display: inline-block;
+            background-color: var(--primary-accent);
+            color: #000000;
+            font-size: 16px;
+            font-weight: 700;
+            padding: 14px 28px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.2s ease;
+            margin-top: 20px;
+        }
+
+        .btn-goadopt:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px var(--shadow-glow);
+            background-color: var(--primary-hover);
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 80px;
+            padding-top: 40px;
+            border-top: 1px solid var(--border-subtle);
+            color: var(--text-muted);
+            font-size: 14px;
+            padding-bottom: 40px;
+        }
+
+        @media (max-width: 768px) {
+            h1 { font-size: 32px; }
+            .card { padding: 24px; }
+        }
+    </style>
+</head>
+
+<body>
+    
+    <header class="header-glass">
+        <h1>Front18 <span>Security</span></h1>
+    </header>
+
+    <div class="container">
+        
+        <div class="hero">
+            <div class="hero-badge">Documentação Oficial</div>
+            <h1>Guia de Instalação e Uso do Front18</h1>
+            <p>O Front18 Security é o seu escudo avançado de proteção de conteúdo.</p>
+            <p>Este manual foi desenhado para te guiar passo a passo na sua configuração, de forma direta e sem complicações focando perfeitamente no que deve e no que não deve ser alterado.</p>
+        </div>
+
+        <h2>1. Instalação Descomplicada no WordPress</h2>
+        <p>A preparação do seu site leva menos de três minutos. Siga as instruções abaixo para ativar sua blindagem:</p>
+        <div class="card">
+            <ol>
+                <li>Certifique-se de ter o arquivo <code>front18-wp-plugin.zip</code> salvo no seu computador.</li>
+                <li>Acesse o painel administrativo do seu site (o menu <code>wp-admin</code>).</li>
+                <li>No menu lateral, vá até <strong>Plugins &gt; Adicionar Novo</strong> e clique em <strong>Enviar Plugin</strong> no topo da tela.</li>
+                <li>Selecione o arquivo ZIP que está no seu computador e clique em <strong>Instalar Agora</strong>.</li>
+                <li>Após o upload e finalização do carregamento, clique no botão para <strong>Ativar Plugin</strong>.</li>
+            </ol>
+        </div>
+
+        <h2>2. Ações Seguras e Recomendadas (Onde Mexer) ✅</h2>
+        <p>Na barra lateral preta do seu WordPress, um novo menu chamado <strong>Front18</strong> estará presente. É através deste painel que você orquestra as defesas principais do seu portal.</p>
+
+        <div class="card card-success">
+            <h3>🛡️ Configuração Principal</h3>
+            <p>Estas são as ações do dia a dia. Você deve e pode alterar estas chaves sempre que necessitar:</p>
+            <ul>
+                <li><strong>Status do Front18:</strong> Utilize o interruptor de ativação no topo da tela. Ao ligá-lo, o seu site fica preparado para receber as regras gerais de proteção contra cópia e scraping.</li>
+                <li><strong>SaaS API Key / Client ID:</strong> Cole neste campo a credencial única que nossa equipe forneceu. Utilize o ícone de "olho" no canto direito para conferir visualmente se não colou espaços vazios acidentalmente.</li>
+                <li><strong>Botão de Salvar:</strong> Nunca confirme sua configuração sem clicar no botão <strong>"Salvar Blindagem"</strong> localizado no final da página para firmar suas regras com a nuvem em tempo real.</li>
+            </ul>
+        </div>
+
+        <div class="card card-success">
+            <h3>⚡ Flexibilidade (Exceções de Página)</h3>
+            <p>Embora a proteção Front18 abranja todo o site globalmente, entendemos que documentos públicos (Termos de Uso, Política de Privacidade) não podem ser completamente bloqueados.</p>
+            <ul>
+                <li>Abra normalmente a tela de edição ou o construtor da página que deseja liberar.</li>
+                <li>Na aba de configurações da direita, deslize até encontrar o widget: <strong>🛡️ Defesa Front18</strong>.</li>
+                <li>Selecione a opção <strong>🟢 Forçar Acesso (Liberar Sempre)</strong> e atualize/publique a página. A partir deste momento essa página específica desativará o SDK de bloqueio.</li>
+            </ul>
+        </div>
+
+        <h2>3. Área de Perigo (Onde NÃO Mexer) ❌</h2>
+        <p>Ao navegar para o final do painel de Configurações, há uma seção oculta nomeada <strong>"Painel de Desenvolvedor"</strong>. Esta zona não deve ser alterada sem supervisão técnica.</p>
+        
+        <div class="card card-danger">
+            <h3>⚠️ Integração Customizada Avançada</h3>
+            <p><strong>Aviso:</strong> A modificação de quaisquer dados presentes nos campos abaixo resultará na inoperância do plugin e, consequentemente, afetará o acesso do usuário final ao site.</p>
+            <ul>
+                <li><strong>URL Base do SDK Front18:</strong> Alterar este link desvincula o plugin da nossa infraestrutura em nuvem, fazendo com que as checagens percam a comunicação.</li>
+                <li><strong>Objeto Padrão (JS):</strong> Alterações desreguladas gerarão erros na renderização e problemas de UI no computador do visitante.</li>
+                <li><strong>Chave Interna de Token:</strong> Esta credencial comunica diretamente o seu servidor com a nossa API Core. Resetá-la causará instabilidade crítica.</li>
+            </ul>
+            <p style="margin-top:20px; font-style: italic; font-size:14px; opacity: 0.8;">
+                * Exceção: A opção <code>Telemetria Console</code> só deve ser habilitada a pedido direto de um especialista do Suporte Nível 3 para sessões de depuração online.
+            </p>
+        </div>
+
+        <div class="footer">
+            <p>Ainda com dúvidas? O nosso suporte de engenharia está pronto para responder prontamente aos seus chamados.</p>
+            <a href="#" class="btn-goadopt">Acessar Portal de Suporte</a>
+            <p style="margin-top:40px;">&copy; 2026 Front18. Todos os direitos reservados.</p>
+        </div>
+    </div>
+
+</body>
+</html>
