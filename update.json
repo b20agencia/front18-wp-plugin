@@ -1,9 +1,9 @@
 {
   "name": "Front18 WP Plugin",
   "slug": "front18-wp-plugin",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "author": "B20 Agência",
-  "download_url": "https://github.com/b20agencia/front18-wp-plugin/releases/download/v1.0.0/front18-wp-plugin.zip",
+  "download_url": "https://github.com/b20agencia/front18-wp-plugin/releases/download/v1.0.1/front18-wp-plugin.zip",
   "requires": "6.0",
   "tested": "6.5",
   "requires_php": "7.4",
@@ -11,6 +11,6 @@
   "homepage": "https://github.com/b20agencia/front18-wp-plugin",
   "sections": {
     "description": "Integração Front18 com WordPress.",
-    "changelog": "<h4>1.0.0</h4><ul><li>Primeira versão pública do plugin.</li></ul>"
+    "changelog": "<h4>1.0.1</h4><ul><li>Correção vital: Proteção de Cache (Remoção temporal dinãmica para preservar CDN).</li></ul><h4>1.0.0</h4><ul><li>Primeira versão pública do plugin.</li></ul>"
   }
 }
