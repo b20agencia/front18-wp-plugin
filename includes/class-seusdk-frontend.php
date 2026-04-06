@@ -283,9 +283,10 @@ class Front18_Frontend {
                     }
                 }, maxTimeout);
 
-                // 6. EXTERNAL SDK INJECTION (Controle Dinâmico Absoluto com Defer Estrito e Data Attributes Payload)
+                // EXTERNAL SDK INJECTION (Controle Dinâmico Absoluto com Defer Estrito e Data Attributes Payload)
                 var sdkScript = document.createElement('script');
-                var cacheBuster = window.Front18Config.apiKey.substring(0,5) + '_' + Date.now().toString().substring(6);
+                // Cache Buster por Dia: Força os clientes a baixarem atualizações do SaaS 1x por dia, sem DDOS.
+                var cacheBuster = window.Front18Config.apiKey.substring(0,5) + '_d' + Math.floor(Date.now() / 86400000);
                 sdkScript.src = "<?php echo esc_url( $sdk_url ); ?>?v=" + cacheBuster;
                 // Removemos o defer para garantir que a injeção inicie de imediato 
                 // para o Watchdog do antiflicker registrar o SDK
