@@ -63,6 +63,18 @@ class Front18_API {
                 'blur_amount'   => isset( $config_payload['blur_amount'] ) ? (int) $config_payload['blur_amount'] : 25,
                 'blur_selector' => isset( $config_payload['blur_selector'] ) ? map_deep( wp_unslash( $config_payload['blur_selector'] ), 'sanitize_text_field' ) : 'img, video, iframe, [data-front18="locked"]',
             );
+            
+            // Permite capturar variáveis customizadas para módulos estendidos (ex: DPO-only, Facial-only, module_type)
+            foreach ( $config_payload as $key => $value ) {
+                if ( ! isset( $sanitized_config[ $key ] ) ) {
+                    if ( is_scalar( $value ) ) {
+                        $sanitized_config[ sanitize_key( $key ) ] = sanitize_text_field( $value );
+                    } elseif ( is_bool( $value ) ) {
+                        $sanitized_config[ sanitize_key( $key ) ] = rest_sanitize_boolean( $value );
+                    }
+                }
+            }
+
             update_option( 'front18_synced_config', $sanitized_config );
         }
         

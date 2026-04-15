@@ -1,5 +1,12 @@
 === Front18 Security Integration Changelog ===
 
+= 1.0.2 =
+* Suporte nativo ao mapeamento de payloads dinâmicos (DPO, Facial) no painel administrativo do Front18.
+* Desbloqueio da injeção no front-end para propriedades flexíveis orientadas pelo SaaS.
+
+= 1.0.1 =
+* Correção vital e melhoria no cache e CDN.
+
 = 1.0.0 =
 * Lançamento da nova infraestrutura.
 * Otimização do carregamento (Autoload/Lazy load) de classes.

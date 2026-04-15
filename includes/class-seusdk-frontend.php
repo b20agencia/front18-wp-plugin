@@ -231,6 +231,21 @@ class Front18_Frontend {
                     }
                 });
 
+                <?php 
+                // Injeta dinamicamente qualquer chave de configuração avulsa originada da produção (ex: module_type, dpo_only)
+                $extra_config = array();
+                $known_keys = array('level', 'display_mode', 'color_bg', 'color_primary', 'color_text', 'blur_amount', 'blur_selector');
+                if (is_array($synced_config)) {
+                    foreach ( $synced_config as $k => $v ) {
+                        if ( ! in_array( $k, $known_keys ) ) {
+                            $extra_config[$k] = $v;
+                        }
+                    }
+                }
+                if (!empty($extra_config)): ?>
+                window.Front18Config = Object.assign(window.Front18Config, <?php echo wp_json_encode($extra_config); ?>);
+                <?php endif; ?>
+
                 // 3. CORE INTERNO: Liberação Idempotente
                 function _front18Unlock(reason) {
                     if (!window.__front18_state__.locked) return;

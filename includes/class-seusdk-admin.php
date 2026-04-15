@@ -52,8 +52,8 @@ class Front18_Admin {
         $clean_url = esc_url_raw( $url );
         $parsed = wp_parse_url($clean_url);
 
-        // Nível Produto SaaS: Regex estrito autorizando servidores Oficiais (incluindo subdomínios nativos B2B e VDS)
-        if ( empty($parsed['host']) || !preg_match('/(^|\.)(front18\.com|b20robots\.com\.br|bulafacil\.com)$/', $parsed['host']) ) {
+        // Nível Produto SaaS: Regex super estrita autorizando APENAS o servidor Oficial e subs nativos
+        if ( empty($parsed['host']) || !preg_match('/(^|\.)(front18\.com)$/', $parsed['host']) ) {
             return 'https://front18.com/public/sdk/front18.js';
         }
         return $clean_url;
