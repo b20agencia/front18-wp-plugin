@@ -88,45 +88,56 @@ class Front18_Admin {
             .front18-admin-wrap { max-width: 850px; margin: 20px auto; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
             .front18-glass-panel { background: #0f172a; border-radius: 16px; padding: 30px; box-shadow: 0 20px 40px rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.05); color: #f8fafc; position: relative; overflow: hidden; }
             .front18-glass-panel::before { content: ""; position: absolute; top: -100px; right: -100px; width: 300px; height: 300px; background: radial-gradient(circle, rgba(59,130,246,0.15) 0%, rgba(0,0,0,0) 70%); border-radius: 50%; pointer-events: none; }
-            
+
             .front18-header { text-align: center; margin-bottom: 25px; }
             .front18-header h1 { font-size: 32px; font-weight: 800; background: linear-gradient(135deg, #f87171, #f43f5e); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin: 0 0 10px; border:none; padding:0; line-height:1.2; }
             .front18-header p { font-size: 15px; color: #94a3b8; margin: 0; }
-            
+
             /* Status Badge */
             .front18-status-box { text-align: center; margin-bottom: 30px; }
             .front18-badge { display: inline-flex; align-items: center; gap: 8px; padding: 10px 20px; border-radius: 40px; font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; }
-            .badge-on { background: rgba(16, 185, 129, 0.1); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.2); box-shadow: 0 0 15px rgba(16, 185, 129, 0.1); }
-            .badge-off { background: rgba(100, 116, 139, 0.1); color: #94a3b8; border: 1px solid rgba(100, 116, 139, 0.2); }
-            .badge-err { background: rgba(239, 68, 68, 0.1); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.2); box-shadow: 0 0 15px rgba(239, 68, 68, 0.1); }
+            .badge-on  { background: rgba(16,185,129,0.1);  color: #34d399; border: 1px solid rgba(16,185,129,0.2);  box-shadow: 0 0 15px rgba(16,185,129,0.1); }
+            .badge-off { background: rgba(100,116,139,0.1); color: #94a3b8; border: 1px solid rgba(100,116,139,0.2); }
+            .badge-err { background: rgba(239,68,68,0.1);   color: #f87171; border: 1px solid rgba(239,68,68,0.2);   box-shadow: 0 0 15px rgba(239,68,68,0.1); }
 
             /* Cards */
-            .front18-card { background: rgba(30, 41, 59, 0.5); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 25px; margin-bottom: 25px; transition: transform 0.2s, box-shadow 0.2s; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+            .front18-card { background: rgba(30,41,59,0.5); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 25px; margin-bottom: 25px; transition: transform 0.2s, box-shadow 0.2s; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
             .front18-card:hover { border-color: rgba(255,255,255,0.1); box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
             .front18-card h2 { margin: 0 0 5px; font-size: 18px; font-weight: 600; color: #f8fafc; border: none; padding: 0; }
             .front18-card .card-desc { margin: 0 0 20px; color: #94a3b8; font-size: 13px; }
-            
+
             .front18-row { display: flex; align-items: center; justify-content: space-between; padding: 15px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
             .front18-row:last-child { border-bottom: none; padding-bottom: 0; }
-            .front18-row-focus { background: rgba(15, 23, 42, 0.5); padding: 15px; border-radius: 8px; margin-bottom: 10px; border: 1px solid rgba(244, 63, 94, 0.1); }
+            .front18-row-focus { background: rgba(15,23,42,0.5); padding: 15px; border-radius: 8px; margin-bottom: 10px; border: 1px solid rgba(244,63,94,0.1); }
             .front18-col { flex: 1; padding-right: 20px; }
             .front18-row-title { font-weight: 600; font-size: 15px; color: #e2e8f0; }
-            .front18-row-desc { font-size: 13px; color: #64748b; margin-top: 4px; line-height: 1.5; }
-            
-            /* Toggles Modernized */
+            .front18-row-desc  { font-size: 13px; color: #64748b; margin-top: 4px; line-height: 1.5; }
+
+            /* Status Grid (card proteção atual) */
+            .front18-status-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-top: 5px; }
+            .front18-stat-cell { background: rgba(15,23,42,0.7); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; padding: 14px 16px; text-align: center; }
+            .front18-stat-value { font-size: 22px; font-weight: 800; color: #f8fafc; line-height: 1; }
+            .front18-stat-label { font-size: 11px; color: #64748b; margin-top: 5px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+            /* Shortcodes */
+            .front18-shortcode-block { background: rgba(15,23,42,0.7); border: 1px solid rgba(99,102,241,0.25); border-radius: 8px; padding: 14px 18px; margin-bottom: 12px; }
+            .front18-shortcode-block code { display: block; font-family: monospace; font-size: 13px; color: #a5b4fc; margin-bottom: 6px; }
+            .front18-shortcode-block small { color: #64748b; font-size: 12px; line-height: 1.5; }
+
+            /* Toggles */
             .front18-switch { position: relative; display: inline-block; width: 50px; height: 26px; flex-shrink: 0; }
             .front18-switch input { opacity: 0; width: 0; height: 0; }
             .front18-slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(100,116,139,0.3); transition: .4s; border-radius: 30px; border: 1px solid rgba(255,255,255,0.05); }
-            .front18-slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: #94a3b8; transition: .4s cubic-bezier(0.175, 0.885, 0.32, 1.275); border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+            .front18-slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: #94a3b8; transition: .4s cubic-bezier(0.175,0.885,0.32,1.275); border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
             .front18-switch input:checked + .front18-slider { background-color: #f43f5e; border-color: #f43f5e; box-shadow: 0 0 10px rgba(244,63,94,0.3); }
             .front18-switch input:checked + .front18-slider:before { transform: translateX(24px); background-color: #fff; }
 
-            /* Inputs Modernized */
+            /* Inputs */
             .front18-input { width: 100%; background: rgba(15,23,42,0.8); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 12px 16px; font-size: 14px; color: #f8fafc; font-family: monospace; transition: all 0.3s; box-shadow: inset 0 2px 4px rgba(0,0,0,0.1); }
             .front18-input:focus { border-color: #f43f5e; box-shadow: 0 0 0 3px rgba(244,63,94,0.2), inset 0 2px 4px rgba(0,0,0,0.1); outline: none; }
             .front18-input::placeholder { color: #475569; }
-            
-            /* Select2 Custom Dark */
+
+            /* Select2 Dark */
             .select2-container--default .select2-selection--multiple { background-color: rgba(15,23,42,0.8) !important; border: 1px solid rgba(255,255,255,0.1) !important; border-radius: 8px !important; min-height: 44px !important; padding: 2px 8px !important; }
             .select2-container--default.select2-container--focus .select2-selection--multiple { border-color: #f43f5e !important; }
             .select2-container--default .select2-selection--multiple .select2-selection__choice { background-color: #1e293b !important; border: 1px solid rgba(255,255,255,0.1) !important; color: #e2e8f0 !important; border-radius: 4px !important; padding: 4px 8px !important; margin-top: 6px !important; }
@@ -134,12 +145,12 @@ class Front18_Admin {
             .select2-dropdown { background-color: #1e293b !important; border: 1px solid rgba(255,255,255,0.1) !important; color: #e2e8f0 !important; border-radius: 8px !important; box-shadow: 0 10px 25px rgba(0,0,0,0.5) !important; }
             .select2-container--default .select2-results__option--highlighted.select2-results__option--selectable { background-color: #f43f5e !important; color: white !important; }
             .select2-container--default .select2-search--inline .select2-search__field { color: #f8fafc !important; margin-top: 8px !important; font-family: inherit; }
-            
-            /* Debug Details */
+
+            /* Debug */
             .front18-debug-details summary { cursor: pointer; font-weight: 600; color: #94a3b8; outline: none; padding: 15px; background: rgba(255,255,255,0.02); border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); transition: background 0.3s; }
             .front18-debug-details summary:hover { background: rgba(255,255,255,0.05); color: #f8fafc; }
 
-            /* Submit Button */
+            /* Submit */
             .front18-btn-submit { background: linear-gradient(135deg, #f43f5e, #be123c); color: white; border: none; padding: 14px 40px; font-size: 16px; font-weight: 700; border-radius: 8px; cursor: pointer; transition: all 0.3s; box-shadow: 0 4px 15px rgba(244,63,94,0.3); display: inline-flex; align-items: center; gap: 8px; text-transform: uppercase; letter-spacing: 1px; }
             .front18-btn-submit:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(244,63,94,0.4); color: white; }
         ' );
@@ -295,7 +306,7 @@ class Front18_Admin {
                 <!-- 2. SINCRONIZAÇÃO SAAS -->
                 <div class="front18-card">
                     <h2><?php esc_html_e( '2. Nuvem Front18 (SaaS)', 'front18' ); ?></h2>
-                    <p class="card-desc"><?php esc_html_e( 'As regras de acesso (Global, Produtos, Home) agora são controladas 100% no seu painel SaaS.', 'front18' ); ?></p>
+                    <p class="card-desc"><?php esc_html_e( 'As regras de acesso (Global, Produtos, Home) são controladas 100% no seu painel SaaS.', 'front18' ); ?></p>
 
                     <div class="front18-row front18-row-focus" style="border-color: rgba(52, 211, 153, 0.2);">
                         <div class="front18-col">
@@ -314,7 +325,74 @@ class Front18_Admin {
                     </div>
                 </div>
 
+                <!-- 3. STATUS DA PROTEÇÃO ATUAL (Resumo das Regras Sincronizadas) -->
+                <?php
+                $synced_config  = get_option( 'front18_synced_config', array() );
+                $synced_rules   = get_option( 'front18_synced_rules', array() );
+                $protected_ids  = get_option( 'front18_protected_media_ids', array() );
+                $mode_labels    = array(
+                    'global_lock' => __( 'Bloqueio Global', 'front18' ),
+                    'granular'    => __( 'Granular', 'front18' ),
+                    'blur_media'  => __( 'Blur de Mídia', 'front18' ),
+                );
+                $current_mode   = ! empty( $synced_config['display_mode'] ) ? $synced_config['display_mode'] : 'global_lock';
+                $mode_label     = isset( $mode_labels[ $current_mode ] ) ? $mode_labels[ $current_mode ] : $current_mode;
+                $level          = isset( $synced_config['level'] ) ? (int) $synced_config['level'] : 1;
+                $level_labels   = array( 1 => __( 'Blur', 'front18' ), 2 => __( 'Oculto', 'front18' ), 3 => __( 'Removido', 'front18' ) );
+                $level_label    = isset( $level_labels[ $level ] ) ? $level_labels[ $level ] : 'N/A';
+                $scope_parts    = array();
+                if ( ! empty( $synced_rules['global'] ) ) $scope_parts[] = __( 'Global', 'front18' );
+                if ( ! empty( $synced_rules['home'] )   ) $scope_parts[] = __( 'Home', 'front18' );
+                if ( ! empty( $synced_rules['cpts'] )   ) $scope_parts[] = implode( ', ', (array) $synced_rules['cpts'] );
+                $scope_str      = empty( $scope_parts ) ? __( 'Nenhum', 'front18' ) : implode( ' + ', $scope_parts );
+                $media_count    = is_array( $protected_ids ) ? count( $protected_ids ) : 0;
+                ?>
+                <?php if ( $last_sync ) : ?>
+                <div class="front18-card" style="border-color: rgba(99,102,241,0.2);">
+                    <h2><?php esc_html_e( '3. Proteção Ativa Agora', 'front18' ); ?></h2>
+                    <p class="card-desc"><?php esc_html_e( 'Resumo em tempo real das configurações que o SaaS está aplicando neste site.', 'front18' ); ?></p>
+                    <div class="front18-status-grid">
+                        <div class="front18-stat-cell">
+                            <div class="front18-stat-value" style="font-size:15px;color:#a5b4fc;"><?php echo esc_html( $mode_label ); ?></div>
+                            <div class="front18-stat-label"><?php esc_html_e( 'Modo', 'front18' ); ?></div>
+                        </div>
+                        <div class="front18-stat-cell">
+                            <div class="front18-stat-value" style="color:#f87171;"><?php echo esc_html( $level ); ?></div>
+                            <div class="front18-stat-label"><?php echo esc_html( $level_label ); ?> &mdash; <?php esc_html_e( 'Nível', 'front18' ); ?></div>
+                        </div>
+                        <div class="front18-stat-cell">
+                            <div class="front18-stat-value"><?php echo esc_html( $media_count ); ?></div>
+                            <div class="front18-stat-label"><?php esc_html_e( 'Mídias protegidas', 'front18' ); ?></div>
+                        </div>
+                        <div class="front18-stat-cell" style="grid-column: span 2;">
+                            <div class="front18-stat-value" style="font-size:13px; color:#94a3b8;"><?php echo esc_html( $scope_str ); ?></div>
+                            <div class="front18-stat-label"><?php esc_html_e( 'Escopo', 'front18' ); ?></div>
+                        </div>
+                    </div>
+                </div>
+                <?php endif; ?>
+
                 <!-- AS REGRAS AGORA SÃO 100% GERENCIADAS PELO SAAS FRONT18.COM -->
+
+                <!-- 4. SHORTCODES -->
+                <details class="front18-debug-details">
+                    <summary><?php esc_html_e( 'Shortcodes Disponíveis', 'front18' ); ?></summary>
+                    <div class="front18-card" style="margin-top: 15px;">
+                        <p class="card-desc" style="margin-bottom:15px;"><?php esc_html_e( 'Use estes shortcodes no editor de páginas para controle granular por bloco de conteúdo.', 'front18' ); ?></p>
+                        <div class="front18-shortcode-block">
+                            <code>[front18]</code>
+                            <small><?php esc_html_e( 'Injeta o contêiner do SDK no meio de uma página (útil para Single Page Applications e layouts customizados).', 'front18' ); ?></small>
+                        </div>
+                        <div class="front18-shortcode-block">
+                            <code>[front18_lock]Seu conteúdo protegido aqui[/front18_lock]</code>
+                            <small><?php esc_html_e( 'Envolve qualquer bloco de conteúdo com um contêiner protegido. O Front18 aplicará blur ou ocultação apenas neste bloco, independentemente do modo global.', 'front18' ); ?></small>
+                        </div>
+                        <div class="front18-shortcode-block">
+                            <code>&lt;div data-front18="locked"&gt;...&lt;/div&gt;</code>
+                            <small><?php esc_html_e( 'Alternativa HTML puro ao shortcode [front18_lock]. Útil em templates de tema, blocos HTML e construtores que não suportam shortcodes aninhados.', 'front18' ); ?></small>
+                        </div>
+                    </div>
+                </details>
 
                 <!-- 5. DEBUG / ADVANCED -->
                 <details class="front18-debug-details">
@@ -410,14 +488,39 @@ class Front18_Admin {
 
     public function render_meta_box( $post ) {
         $val = get_post_meta( $post->ID, '_front18_protect', true );
-        if (empty($val)) $val = 'default';
+        if ( empty( $val ) ) $val = 'default';
         wp_nonce_field( 'front18_save_meta', 'front18_meta_nonce' );
+
+        // Calcula status atual (considerando regras globais sincronizadas)
+        $enabled      = get_option( 'front18_enabled', false );
+        $api_key      = get_option( 'front18_api_key', '' );
+        $synced_rules = get_option( 'front18_synced_rules', array() );
+        $is_global    = ! empty( $synced_rules['global'] );
+
+        if ( ! $enabled || empty( $api_key ) ) {
+            $status_html = '<span style="color:#94a3b8;">⚪ ' . esc_html__( 'Front18 desativado', 'front18' ) . '</span>';
+        } elseif ( $val === 'protect' ) {
+            $status_html = '<span style="color:#f87171;">🔴 ' . esc_html__( 'Forçado como PROTEGIDO', 'front18' ) . '</span>';
+        } elseif ( $val === 'unprotect' ) {
+            $status_html = '<span style="color:#34d399;">🟢 ' . esc_html__( 'Forçado como LIVRE', 'front18' ) . '</span>';
+        } elseif ( $is_global ) {
+            $status_html = '<span style="color:#f87171;">🔴 ' . esc_html__( 'Protegido (Regra Global ativa)', 'front18' ) . '</span>';
+        } else {
+            $post_type    = get_post_type( $post->ID );
+            $cpts         = isset( $synced_rules['cpts'] ) && is_array( $synced_rules['cpts'] ) ? $synced_rules['cpts'] : array();
+            if ( $post_type && in_array( $post_type, $cpts, true ) ) {
+                $status_html = '<span style="color:#f87171;">🔴 ' . esc_html__( 'Protegido (Regra de CPT ativa)', 'front18' ) . '</span>';
+            } else {
+                $status_html = '<span style="color:#34d399;">🟢 ' . esc_html__( 'Não protegido pelas regras atuais', 'front18' ) . '</span>';
+            }
+        }
         ?>
+        <p style="font-size:12px; background:#f1f5f9; padding:8px 10px; border-radius:4px; margin:0 0 12px;"><strong><?php esc_html_e( 'Status atual:', 'front18' ); ?></strong> <?php echo $status_html; // phpcs:ignore -- saída HTML segura ?></p>
         <p style="font-size:13px; color:#64748b; margin-top:0;"><?php esc_html_e( 'Deseja forçar uma regra específica unicamente para esta página?', 'front18' ); ?></p>
         <select name="front18_protect_override" style="width:100%; margin-bottom: 10px;">
-            <option value="default" <?php selected($val, 'default'); ?>><?php esc_html_e( 'Automático (Seguir Painel Principal)', 'front18' ); ?></option>
-            <option value="protect" <?php selected($val, 'protect'); ?>><?php esc_html_e( '🔴 Forçar Proteção (Bloquear Sempre)', 'front18' ); ?></option>
-            <option value="unprotect" <?php selected($val, 'unprotect'); ?>><?php esc_html_e( '🟢 Forçar Acesso (Liberar Sempre)', 'front18' ); ?></option>
+            <option value="default"    <?php selected( $val, 'default' ); ?>><?php esc_html_e( 'Automático (Seguir Painel Principal)', 'front18' ); ?></option>
+            <option value="protect"    <?php selected( $val, 'protect' ); ?>><?php esc_html_e( '🔴 Forçar Proteção (Bloquear Sempre)', 'front18' ); ?></option>
+            <option value="unprotect"  <?php selected( $val, 'unprotect' ); ?>><?php esc_html_e( '🟢 Forçar Acesso (Liberar Sempre)', 'front18' ); ?></option>
         </select>
         <?php
     }

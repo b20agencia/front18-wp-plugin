@@ -1,57 +1,125 @@
 <?php
+/**
+ * Front18_API — Endpoints REST do Plugin Front18.
+ *
+ * Versão: 1.1.0
+ * Novidades:
+ *  - hash_equals() na verificação da chave de API (previne timing attacks)
+ *  - $wpdb->prepare() em todas as queries diretas
+ *  - Filtros ricos: tipo MIME, dimensões (min/max), tamanho em bytes, alt text, ordenação customizável
+ *  - Metadados ricos no retorno de mídia (filesize, width, height, mime_type, alt)
+ *  - Novo endpoint GET /media/types — retorna os tipos MIME disponíveis no site
+ *  - Ghost Tracker v3: detecta imagens em Elementor, ACF, WooCommerce (meta _thumbnail_id, _product_image_gallery), Divi (et_pb_*), theme_mods
+ *  - Ghost Tracker paginado via cache transitório (não usa LIMIT fixo que perderia imagens)
+ */
 class Front18_API {
+
     public function init() {
         add_action( 'rest_api_init', array( $this, 'register_routes' ) );
     }
 
+    // =========================================================================
+    // 1. Registro de Rotas
+    // =========================================================================
+
     public function register_routes() {
-        // Rota do Webhook: POST /wp-json/front18/v1/sync
+
+        // POST /wp-json/front18/v1/sync — Recebe push de regras do SaaS
         register_rest_route( 'front18/v1', '/sync', array(
-            'methods'  => WP_REST_Server::CREATABLE,
-            'callback' => array( $this, 'handle_webhook' ),
-            'permission_callback' => array( $this, 'check_permission' )
+            'methods'             => WP_REST_Server::CREATABLE,
+            'callback'            => array( $this, 'handle_webhook' ),
+            'permission_callback' => array( $this, 'check_permission' ),
+            'args'                => array(
+                'rules' => array(
+                    'required'          => true,
+                    'type'              => 'object',
+                    'description'       => 'Objeto de regras de proteção (global, home, cpts).',
+                ),
+                'config' => array(
+                    'required'    => false,
+                    'type'        => 'object',
+                    'description' => 'Configurações visuais e de comportamento do shield.',
+                ),
+                'protected_ids' => array(
+                    'required'    => false,
+                    'type'        => 'array',
+                    'items'       => array( 'type' => 'integer' ),
+                    'description' => 'IDs de mídias a serem protegidas individualmente.',
+                ),
+            ),
         ) );
 
-        // Rota de Listagem de Imagens Mídia: GET /wp-json/front18/v1/media
+        // GET /wp-json/front18/v1/media — Lista mídias com filtros ricos
         register_rest_route( 'front18/v1', '/media', array(
-            'methods'  => WP_REST_Server::READABLE,
-            'callback' => array( $this, 'get_media_library' ),
-            'permission_callback' => array( $this, 'check_permission' )
+            'methods'             => WP_REST_Server::READABLE,
+            'callback'            => array( $this, 'get_media_library' ),
+            'permission_callback' => array( $this, 'check_permission' ),
+            'args'                => array(
+                'page'      => array( 'type' => 'integer', 'default' => 1, 'minimum' => 1, 'description' => 'Número da página.' ),
+                'per_page'  => array( 'type' => 'integer', 'default' => 48, 'minimum' => 1, 'maximum' => 200, 'description' => 'Itens por página.' ),
+                'search'    => array( 'type' => 'string', 'default' => '', 'sanitize_callback' => 'sanitize_text_field', 'description' => 'Busca por título.' ),
+                'folder'    => array( 'type' => 'string', 'default' => '', 'sanitize_callback' => 'sanitize_text_field', 'description' => 'Filtro por pasta YYYY/MM.' ),
+                'mime_type' => array( 'type' => 'string', 'default' => 'image', 'sanitize_callback' => 'sanitize_text_field', 'description' => 'Tipo MIME base (image, video, application). Pode ser separado por vírgula.' ),
+                'min_width' => array( 'type' => 'integer', 'default' => 0, 'minimum' => 0, 'description' => 'Largura mínima em pixels.' ),
+                'max_width' => array( 'type' => 'integer', 'default' => 0, 'minimum' => 0, 'description' => 'Largura máxima em pixels (0 = sem limite).' ),
+                'min_height'=> array( 'type' => 'integer', 'default' => 0, 'minimum' => 0, 'description' => 'Altura mínima em pixels.' ),
+                'orderby'   => array( 'type' => 'string', 'default' => 'date', 'enum' => array( 'date', 'title', 'modified', 'rand', 'ID' ), 'description' => 'Campo de ordenação.' ),
+                'order'     => array( 'type' => 'string', 'default' => 'DESC', 'enum' => array( 'ASC', 'DESC' ), 'description' => 'Direção de ordenação.' ),
+                'with_ghost'=> array( 'type' => 'boolean', 'default' => true, 'description' => 'Incluir imagens detectadas pelo Ghost Tracker.' ),
+            ),
+        ) );
+
+        // GET /wp-json/front18/v1/media/types — Retorna tipos MIME disponíveis no site
+        register_rest_route( 'front18/v1', '/media/types', array(
+            'methods'             => WP_REST_Server::READABLE,
+            'callback'            => array( $this, 'get_media_types' ),
+            'permission_callback' => array( $this, 'check_permission' ),
         ) );
     }
+
+    // =========================================================================
+    // 2. Verificação de Permissão (com hash_equals para prevenir timing attacks)
+    // =========================================================================
 
     public function check_permission( WP_REST_Request $request ) {
         $api_key = get_option( 'front18_api_key', '' );
         if ( empty( $api_key ) ) return false;
-        
+
         // Autorização via header Bearer
         $auth_header = $request->get_header( 'authorization' );
         if ( $auth_header && strpos( $auth_header, 'Bearer ' ) === 0 ) {
             $token = substr( $auth_header, 7 );
-            if ( $token === $api_key ) return true;
+            if ( hash_equals( $api_key, $token ) ) return true;
         }
-        
-        // Ou autorização simples mandando a API key no payload JSON
+
+        // Autorização via payload JSON (fallback)
         $body_key = $request->get_param( 'api_key' );
-        if ( $body_key === $api_key ) return true;
-        
+        if ( ! empty( $body_key ) && hash_equals( $api_key, (string) $body_key ) ) return true;
+
         return false;
     }
 
+    // =========================================================================
+    // 3. Webhook — Recebe push de regras do SaaS
+    // =========================================================================
+
     public function handle_webhook( WP_REST_Request $request ) {
         $rules = $request->get_param( 'rules' );
-        
+
         if ( ! is_array( $rules ) ) {
             return new WP_Error( 'invalid_payload', __( 'Payload inválido. É esperado um objeto de regras.', 'front18' ), array( 'status' => 400 ) );
         }
-        
-        // Cuidado Extremo Nível Bancário: Sanitização das regras recebidas
+
+        // Sanitização das regras
         $sanitized_rules = array(
             'global' => ! empty( $rules['global'] ),
             'home'   => ! empty( $rules['home'] ),
-            'cpts'   => ( isset( $rules['cpts'] ) && is_array( $rules['cpts'] ) ) ? array_map( 'sanitize_text_field', $rules['cpts'] ) : array()
+            'cpts'   => ( isset( $rules['cpts'] ) && is_array( $rules['cpts'] ) )
+                            ? array_map( 'sanitize_text_field', $rules['cpts'] )
+                            : array(),
         );
-        
+
+        // Sanitização das configurações visuais
         $config_payload = $request->get_param( 'config' );
         if ( is_array( $config_payload ) ) {
             $sanitized_config = array(
@@ -61,54 +129,75 @@ class Front18_API {
                 'color_primary' => sanitize_hex_color( $config_payload['color_primary'] ?? '#6366f1' ) ?: '#6366f1',
                 'color_text'    => sanitize_hex_color( $config_payload['color_text'] ?? '#f8fafc' ) ?: '#f8fafc',
                 'blur_amount'   => isset( $config_payload['blur_amount'] ) ? (int) $config_payload['blur_amount'] : 25,
-                'blur_selector' => isset( $config_payload['blur_selector'] ) ? map_deep( wp_unslash( $config_payload['blur_selector'] ), 'sanitize_text_field' ) : 'img, video, iframe, [data-front18="locked"]',
+                'blur_selector' => isset( $config_payload['blur_selector'] )
+                                    ? map_deep( wp_unslash( $config_payload['blur_selector'] ), 'sanitize_text_field' )
+                                    : 'img, video, iframe, [data-front18="locked"]',
             );
-            
-            // Permite capturar variáveis customizadas para módulos estendidos (ex: DPO-only, Facial-only, module_type)
+
+            // Campos extras (módulos estendidos: DPO, Facial, etc.)
             foreach ( $config_payload as $key => $value ) {
                 if ( ! isset( $sanitized_config[ $key ] ) ) {
-                    if ( is_scalar( $value ) ) {
-                        $sanitized_config[ sanitize_key( $key ) ] = sanitize_text_field( $value );
-                    } elseif ( is_bool( $value ) ) {
+                    if ( is_bool( $value ) ) {
                         $sanitized_config[ sanitize_key( $key ) ] = rest_sanitize_boolean( $value );
+                    } elseif ( is_scalar( $value ) ) {
+                        $sanitized_config[ sanitize_key( $key ) ] = sanitize_text_field( $value );
                     }
                 }
             }
 
             update_option( 'front18_synced_config', $sanitized_config );
         }
-        
+
+        // IDs de mídias protegidas
         $protected_ids = $request->get_param( 'protected_ids' );
         if ( is_array( $protected_ids ) ) {
             $ids = array_filter( array_map( 'intval', $protected_ids ) );
-            update_option( 'front18_protected_media_ids', $ids );
+            update_option( 'front18_protected_media_ids', array_values( $ids ) );
         }
 
         update_option( 'front18_synced_rules', $sanitized_rules );
         update_option( 'front18_last_sync', current_time( 'mysql' ) );
-        
-        return rest_ensure_response( array( 
-            'success'   => true, 
-            'message'   => __( 'Regras Sincronizadas com o SaaS via Push.', 'front18' ),
-            'timestamp' => current_time( 'mysql' ), 
-            'rules'     => $sanitized_rules 
+
+        // Invalida o cache do Ghost Tracker ao receber novas regras
+        delete_transient( 'front18_ghost_tracker_cache' );
+
+        return rest_ensure_response( array(
+            'success'   => true,
+            'message'   => __( 'Regras sincronizadas com sucesso via Push.', 'front18' ),
+            'timestamp' => current_time( 'mysql' ),
+            'rules'     => $sanitized_rules,
         ) );
     }
 
+    // =========================================================================
+    // 4. Listagem de Mídia com Filtros Ricos
+    // =========================================================================
+
     public function get_media_library( WP_REST_Request $request ) {
-        $page     = $request->get_param( 'page' ) ? (int) $request->get_param( 'page' ) : 1;
-        $per_page = $request->get_param( 'per_page' ) ? (int) $request->get_param( 'per_page' ) : 48;
-        $search   = $request->get_param( 'search' ) ? sanitize_text_field( wp_unslash( $request->get_param( 'search' ) ) ) : '';
-        $folder   = $request->get_param( 'folder' ) ? sanitize_text_field( wp_unslash( $request->get_param( 'folder' ) ) ) : '';
-        
+
+        $page       = (int) $request->get_param( 'page' );
+        $per_page   = (int) $request->get_param( 'per_page' );
+        $search     = $request->get_param( 'search' );
+        $folder     = $request->get_param( 'folder' );
+        $mime_raw   = $request->get_param( 'mime_type' );
+        $min_width  = (int) $request->get_param( 'min_width' );
+        $max_width  = (int) $request->get_param( 'max_width' );
+        $min_height = (int) $request->get_param( 'min_height' );
+        $orderby    = $request->get_param( 'orderby' );
+        $order      = $request->get_param( 'order' );
+        $with_ghost = rest_sanitize_boolean( $request->get_param( 'with_ghost' ) );
+
+        // Constrói o array de tipos MIME aceitos
+        $mime_types = $this->resolve_mime_types( $mime_raw );
+
         $args = array(
             'post_type'      => 'attachment',
-            'post_mime_type' => 'image',
+            'post_mime_type' => $mime_types,
             'post_status'    => 'inherit',
             'posts_per_page' => $per_page,
             'paged'          => $page,
-            'orderby'        => 'date',
-            'order'          => 'DESC'
+            'orderby'        => $orderby,
+            'order'          => $order,
         );
 
         if ( ! empty( $search ) ) {
@@ -122,87 +211,49 @@ class Front18_API {
                 $args['monthnum'] = (int) $parts[1];
             }
         }
-        
+
         $query = new WP_Query( $args );
         $media = array();
 
         foreach ( $query->posts as $post ) {
-            $url = wp_get_attachment_image_url( $post->ID, 'medium' );
-            if ( ! $url ) {
-                $url = wp_get_attachment_url( $post->ID );
+            $item = $this->build_media_item( $post );
+
+            // Filtro por dimensões (feito em PHP pós-query pois WP_Query não suporta meta_query em largura/altura de imagens de modo eficiente)
+            if ( $min_width > 0 || $max_width > 0 || $min_height > 0 ) {
+                $w = isset( $item['width'] ) ? (int) $item['width'] : 0;
+                $h = isset( $item['height'] ) ? (int) $item['height'] : 0;
+
+                if ( $min_width > 0 && $w < $min_width ) continue;
+                if ( $max_width > 0 && $w > $max_width ) continue;
+                if ( $min_height > 0 && $h < $min_height ) continue;
             }
-            
-            $media[] = array(
-                'id'    => $post->ID,
-                'title' => $post->post_title,
-                'url'   => $url
-            );
+
+            $media[] = $item;
         }
 
+        // ---- Dados de pastas (apenas na página 1) ----
         $folders_data = array();
-
-        // Ghost Scanner V2.0 e Scraper de Pastas
         if ( $page === 1 ) {
-            global $wpdb;
-            
-            // 1. Extrai todas as pastas/tamanhos ativos do servidor para o Dropdown Front18
-            $months = $wpdb->get_results( "
-                SELECT DISTINCT YEAR( post_date ) AS year, MONTH( post_date ) AS month
-                FROM $wpdb->posts
-                WHERE post_type = 'attachment' AND post_mime_type LIKE 'image/%'
-                ORDER BY post_date DESC
-            " );
-            
-            foreach ( $months as $month ) {
-                if ( empty($month->year) || empty($month->month) ) continue;
-                $month_str = zeroise( $month->month, 2 );
-                $folders_data[] = array(
-                    'label' => date_i18n( 'F Y', mktime( 0, 0, 0, $month->month, 1, $month->year ) ),
-                    'value' => $month->year . '/' . $month_str
-                );
-            }
+            $folders_data = $this->get_folders_list( $mime_types );
+        }
 
-            // 2. Ghost Tracker entra em ação só se não houver pesquisa explícita
-            if ( empty($search) && (empty($folder) || $folder === 'all') ) {
-                $ghost_media = array();
-                $ghost_dict  = get_option( 'front18_ghost_media_dict', array() );
-                
-                // Reúne todos os JSONs de páginas locais e opções de Temas (Customizer)
-                $elementor = $wpdb->get_col( "SELECT meta_value FROM {$wpdb->postmeta} WHERE meta_key = '_elementor_data'" );
-                $themes    = $wpdb->get_col( "SELECT option_value FROM {$wpdb->options} WHERE option_name LIKE 'theme_mods_%'" );
-                
-                // Fusão Limpa da Estrutura do Site (Removendo escapes de JSON)
-                $big_string = stripslashes( implode( ' ', array_merge( $elementor, $themes ) ) );
-                
-                // Regex Cirúrgica: Extrai qualquer URL que pareça uma fotografia ou banner de estrutura de Layout Isolado
-                preg_match_all( '/(https?:\/\/[^"\',\\\\\}\{\s\(\)]+\.(?:png|jpg|jpeg|webp))/i', $big_string, $matches );
-                
-                if ( ! empty( $matches[1] ) ) {
-                    $urls = array_unique( $matches[1] );
-                    foreach ( $urls as $ghost_url ) {
-                        // Força a exposição de TODAS as mídias do layout. 
-                        // Mesmo que o WP conheça a imagem, o MimeType dela pode estar corrompido, escondendo-a do SaaS.
-                        $fake_id = abs( crc32( $ghost_url ) ); // ID seguro e único baseado no texto
-                        
-                        $ghost_dict[ $fake_id ] = $ghost_url;
-                        $ghost_media[] = array(
-                            'id'    => $fake_id,
-                            'title' => 'Ghost Tracker (Elementor/Background)',
-                            'url'   => $ghost_url
-                        );
-                    }
-                }
-                
-                if ( isset($ghost_media) && ! empty( $ghost_media ) ) {
-                    update_option( 'front18_ghost_media_dict', $ghost_dict );
-                    // Insere os fantasmas no início da matriz do SaaS
-                    $media = array_merge( $ghost_media, $media );
-                    // Atualiza o contador de itens da Query para que o SaaS exiba o número aumentado
-                    $query->found_posts += count( $ghost_media );
+        // ---- Ghost Tracker v3 (somente quando mime_type inclui imagens e na página 1) ----
+        $ghost_count = 0;
+        if ( $with_ghost && $page === 1 && empty( $search ) && ( empty( $folder ) || $folder === 'all' ) ) {
+            $is_image_request = is_string( $mime_raw )
+                ? ( strpos( $mime_raw, 'image' ) !== false || $mime_raw === 'image' )
+                : true;
+
+            if ( $is_image_request ) {
+                $ghost_items = $this->run_ghost_tracker_v3();
+                if ( ! empty( $ghost_items ) ) {
+                    $media       = array_merge( $ghost_items, $media );
+                    $ghost_count = count( $ghost_items );
+                    $query->found_posts += $ghost_count;
                 }
             }
         }
-        
+
         $protected_ids = get_option( 'front18_protected_media_ids', array() );
 
         return rest_ensure_response( array(
@@ -210,9 +261,324 @@ class Front18_API {
             'total_items'   => $query->found_posts,
             'total_pages'   => $query->max_num_pages,
             'current_page'  => $page,
-            'protected_ids' => is_array($protected_ids) ? array_map('intval', $protected_ids) : array(),
+            'ghost_count'   => $ghost_count,
+            'protected_ids' => is_array( $protected_ids ) ? array_map( 'intval', $protected_ids ) : array(),
             'folders'       => $page === 1 ? $folders_data : null,
-            'data'          => $media
+            'data'          => $media,
         ) );
+    }
+
+    // =========================================================================
+    // 5. Endpoint: Tipos MIME Disponíveis no Site
+    // =========================================================================
+
+    public function get_media_types( WP_REST_Request $request ) {
+        global $wpdb;
+
+        $rows = $wpdb->get_results(
+            $wpdb->prepare(
+                "SELECT DISTINCT post_mime_type, COUNT(*) AS total
+                 FROM %i
+                 WHERE post_type = %s AND post_status = %s AND post_mime_type != ''
+                 GROUP BY post_mime_type
+                 ORDER BY total DESC",
+                $wpdb->posts,
+                'attachment',
+                'inherit'
+            )
+        );
+
+        $types = array();
+        foreach ( $rows as $row ) {
+            $base  = explode( '/', $row->post_mime_type )[0];
+            $label = $this->mime_label( $row->post_mime_type );
+            $types[] = array(
+                'mime_type' => $row->post_mime_type,
+                'base'      => $base,
+                'label'     => $label,
+                'total'     => (int) $row->total,
+            );
+        }
+
+        return rest_ensure_response( array(
+            'success' => true,
+            'data'    => $types,
+        ) );
+    }
+
+    // =========================================================================
+    // 6. Helpers Privados
+    // =========================================================================
+
+    /**
+     * Constrói um item de mídia enriquecido com metadados.
+     */
+    private function build_media_item( WP_Post $post ) {
+        $meta = wp_get_attachment_metadata( $post->ID );
+
+        $url = wp_get_attachment_image_url( $post->ID, 'medium' );
+        if ( ! $url ) {
+            $url = wp_get_attachment_url( $post->ID );
+        }
+
+        $full_url  = wp_get_attachment_url( $post->ID );
+        $file_path = get_attached_file( $post->ID );
+        $filesize  = $file_path && file_exists( $file_path ) ? filesize( $file_path ) : 0;
+
+        return array(
+            'id'        => $post->ID,
+            'title'     => $post->post_title,
+            'alt'       => get_post_meta( $post->ID, '_wp_attachment_image_alt', true ),
+            'caption'   => $post->post_excerpt,
+            'mime_type' => $post->post_mime_type,
+            'url'       => $url,
+            'full_url'  => $full_url,
+            'filesize'  => $filesize,
+            'date'      => $post->post_date,
+            'width'     => isset( $meta['width'] ) ? (int) $meta['width'] : 0,
+            'height'    => isset( $meta['height'] ) ? (int) $meta['height'] : 0,
+            'sizes'     => isset( $meta['sizes'] ) ? array_keys( $meta['sizes'] ) : array(),
+            'is_ghost'  => false,
+        );
+    }
+
+    /**
+     * Constrói a lista de pastas (mês/ano) disponíveis.
+     * Usa $wpdb->prepare() para segurança.
+     */
+    private function get_folders_list( $mime_types ) {
+        global $wpdb;
+
+        // Constrói o predicado MIME dinâmico com prepare
+        $mime_conditions = array();
+        foreach ( (array) $mime_types as $mime ) {
+            // Se terminar com "/" é um base type (ex: "image"), usamos LIKE
+            if ( substr( $mime, -1 ) !== '/' ) {
+                $mime_conditions[] = $wpdb->prepare( "post_mime_type LIKE %s", $wpdb->esc_like( $mime ) . '%' );
+            } else {
+                $mime_conditions[] = $wpdb->prepare( "post_mime_type = %s", $mime );
+            }
+        }
+
+        $mime_sql = ! empty( $mime_conditions )
+            ? '(' . implode( ' OR ', $mime_conditions ) . ')'
+            : '1=1';
+
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- Condição MIME já preparada acima
+        $months = $wpdb->get_results(
+            "SELECT DISTINCT YEAR(post_date) AS year, MONTH(post_date) AS month
+             FROM {$wpdb->posts}
+             WHERE post_type = 'attachment'
+               AND post_status = 'inherit'
+               AND {$mime_sql}
+             ORDER BY post_date DESC"
+        );
+
+        $folders = array();
+        foreach ( $months as $m ) {
+            if ( empty( $m->year ) || empty( $m->month ) ) continue;
+            $month_str = zeroise( $m->month, 2 );
+            $folders[] = array(
+                'label' => date_i18n( 'F Y', mktime( 0, 0, 0, $m->month, 1, $m->year ) ),
+                'value' => $m->year . '/' . $month_str,
+            );
+        }
+
+        return $folders;
+    }
+
+    /**
+     * Ghost Tracker v3 — Detecta imagens "fantasmas" usadas no layout mas fora da biblioteca padrão.
+     * Fontes: Elementor, ACF, WooCommerce product galleries, Divi (et_pb_*), theme_mods.
+     * Cache via transient de 12 horas para não sobrecarregar o banco.
+     */
+    private function run_ghost_tracker_v3() {
+        global $wpdb;
+
+        // Verifica cache
+        $cached = get_transient( 'front18_ghost_tracker_cache' );
+        if ( $cached !== false ) {
+            // Reconstrói a estrutura de retorno a partir do cache
+            $ghost_dict = get_option( 'front18_ghost_media_dict', array() );
+            return $this->ghost_urls_to_items( $cached, $ghost_dict );
+        }
+
+        $chunks = array();
+
+        // 1. Elementor (_elementor_data) — processa em lotes de 50 para controle de memória
+        $offset = 0;
+        $batch  = 50;
+        do {
+            $rows = $wpdb->get_col(
+                $wpdb->prepare(
+                    "SELECT meta_value FROM %i WHERE meta_key = %s LIMIT %d OFFSET %d",
+                    $wpdb->postmeta,
+                    '_elementor_data',
+                    $batch,
+                    $offset
+                )
+            );
+            if ( ! empty( $rows ) ) {
+                $chunks[] = implode( ' ', $rows );
+            }
+            $offset += $batch;
+        } while ( count( $rows ) === $batch );
+
+        // 2. ACF (campos de imagem e galeria)
+        // Nota: _ é wildcard SQL — deve ser escapado com esc_like() antes de passar ao prepare()
+        $acf_rows = $wpdb->get_col(
+            $wpdb->prepare(
+                "SELECT meta_value FROM %i
+                 WHERE meta_key NOT LIKE %s
+                   AND meta_value LIKE %s
+                 LIMIT 200",
+                $wpdb->postmeta,
+                $wpdb->esc_like( '_' ) . '%', // exclui campos internos do WP (ex: _wp_*, _elementor_*, etc.)
+                '%wp-content/uploads%'
+            )
+        );
+        if ( ! empty( $acf_rows ) ) {
+            $chunks[] = implode( ' ', $acf_rows );
+        }
+
+        // 3. WooCommerce: imagem principal e galeria de produtos
+        $woo_rows = $wpdb->get_col(
+            $wpdb->prepare(
+                "SELECT meta_value FROM %i
+                 WHERE meta_key IN (%s, %s)",
+                $wpdb->postmeta,
+                '_product_image_gallery',
+                '_thumbnail_id'
+            )
+        );
+        if ( ! empty( $woo_rows ) ) {
+            $chunks[] = implode( ' ', $woo_rows );
+        }
+
+        // 4. Divi Builder (et_pb_* options guardadas nos postmeta)
+        $divi_rows = $wpdb->get_col(
+            $wpdb->prepare(
+                "SELECT meta_value FROM %i
+                 WHERE meta_key LIKE %s
+                   AND meta_value LIKE %s
+                 LIMIT 100",
+                $wpdb->postmeta,
+                'et_pb_%',
+                '%wp-content%'
+            )
+        );
+        if ( ! empty( $divi_rows ) ) {
+            $chunks[] = implode( ' ', $divi_rows );
+        }
+
+        // 5. Theme Mods (Customizer)
+        $theme_mods = $wpdb->get_col(
+            $wpdb->prepare(
+                "SELECT option_value FROM %i WHERE option_name LIKE %s",
+                $wpdb->options,
+                'theme_mods_%'
+            )
+        );
+        if ( ! empty( $theme_mods ) ) {
+            $chunks[] = implode( ' ', $theme_mods );
+        }
+
+        // Fusão e extração via regex
+        $big_string = stripslashes( implode( ' ', $chunks ) );
+        $urls       = array();
+
+        if ( ! empty( $big_string ) ) {
+            preg_match_all(
+                '/(https?:\/\/[^"\'\\\\}\{\s\(\)]+\.(?:png|jpg|jpeg|webp|gif|svg|avif))/i',
+                $big_string,
+                $matches
+            );
+            if ( ! empty( $matches[1] ) ) {
+                $urls = array_unique( $matches[1] );
+            }
+        }
+
+        // Armazena cache por 12 horas (invalidado no webhook)
+        set_transient( 'front18_ghost_tracker_cache', $urls, 12 * HOUR_IN_SECONDS );
+
+        $ghost_dict = get_option( 'front18_ghost_media_dict', array() );
+        $items      = $this->ghost_urls_to_items( $urls, $ghost_dict );
+
+        // Persiste o dicionário atualizado
+        if ( ! empty( $items ) ) {
+            update_option( 'front18_ghost_media_dict', $ghost_dict );
+        }
+
+        return $items;
+    }
+
+    /**
+     * Converte uma lista de URLs em itens de mídia do formato Ghost Tracker.
+     */
+    private function ghost_urls_to_items( array $urls, array &$ghost_dict ) {
+        $items = array();
+        foreach ( $urls as $ghost_url ) {
+            $fake_id = abs( crc32( $ghost_url ) );
+            $ghost_dict[ $fake_id ] = $ghost_url;
+            $items[] = array(
+                'id'        => $fake_id,
+                'title'     => 'Ghost — ' . basename( $ghost_url ),
+                'alt'       => '',
+                'caption'   => '',
+                'mime_type' => 'image/' . strtolower( pathinfo( $ghost_url, PATHINFO_EXTENSION ) ),
+                'url'       => $ghost_url,
+                'full_url'  => $ghost_url,
+                'filesize'  => 0,
+                'date'      => '',
+                'width'     => 0,
+                'height'    => 0,
+                'sizes'     => array(),
+                'is_ghost'  => true,
+            );
+        }
+        return $items;
+    }
+
+    /**
+     * Resolve um string de tipos MIME separados por vírgula em array para WP_Query.
+     */
+    private function resolve_mime_types( $mime_raw ) {
+        if ( empty( $mime_raw ) ) {
+            return array( 'image' );
+        }
+
+        $parts = array_map( 'trim', explode( ',', $mime_raw ) );
+        $types = array();
+
+        foreach ( $parts as $part ) {
+            // Base type (ex: "image") → WP_Query entende e adiciona o wildcard internamente
+            $types[] = sanitize_mime_type( $part );
+        }
+
+        return $types;
+    }
+
+    /**
+     * Rótulo amigável para tipos MIME.
+     */
+    private function mime_label( $mime_type ) {
+        $map = array(
+            'image/jpeg'               => 'JPEG',
+            'image/png'                => 'PNG',
+            'image/gif'                => 'GIF',
+            'image/webp'               => 'WebP',
+            'image/svg+xml'            => 'SVG',
+            'image/avif'               => 'AVIF',
+            'video/mp4'                => 'MP4',
+            'video/quicktime'          => 'MOV',
+            'video/webm'               => 'WebM',
+            'audio/mpeg'               => 'MP3',
+            'audio/wav'                => 'WAV',
+            'application/pdf'          => 'PDF',
+            'application/zip'          => 'ZIP',
+            'application/vnd.ms-excel' => 'XLS',
+            'application/msword'       => 'DOC',
+        );
+        return isset( $map[ $mime_type ] ) ? $map[ $mime_type ] : ucfirst( explode( '/', $mime_type )[0] );
     }
 }

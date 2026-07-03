@@ -1,87 +1,139 @@
 <?php
 
+/**
+ * Front18_Frontend — Injeção de scripts e CSS no front-end do site.
+ *
+ * Versão: 1.1.0
+ * Novidades:
+ *  - Propriedades privadas de cache para get_option() (sem chamadas duplicadas)
+ *  - update_option() removido da _calculate_scope() — migração movida para hook de upgrade
+ *  - Cache buster gerado via PHP com gmdate('Ymd') em vez de JavaScript
+ *  - Lógica de escopo extraída do _calculate_scope em métodos pequenos e legíveis
+ */
 class Front18_Frontend {
 
+    // =========================================================================
+    // Cache interno de options (carregados 1x por request)
+    // =========================================================================
+
+    /** @var bool|null */
     private $should_run_cached = null;
+
+    /** @var array */
+    private $synced_config = null;
+
+    /** @var array */
+    private $synced_rules = null;
+
+    /** @var array */
+    private $protected_media = null;
+
+    // =========================================================================
+    // Inicialização
+    // =========================================================================
 
     public function init() {
         add_action( 'wp_head', array( $this, 'inject_anti_flicker' ), 0 );
         add_action( 'wp_head', array( $this, 'inject_sdk_loader' ), 1 );
-        add_shortcode( 'front18', array( $this, 'render_shortcode' ) );
+        add_shortcode( 'front18',      array( $this, 'render_shortcode' ) );
         add_shortcode( 'front18_lock', array( $this, 'render_lock_shortcode' ) );
         add_filter( 'language_attributes', array( $this, 'inject_html_class' ), 99 );
     }
 
+    // =========================================================================
+    // Acessores internos com cache (cada option é buscada 1x por request)
+    // =========================================================================
+
+    private function get_synced_config() {
+        if ( $this->synced_config === null ) {
+            $this->synced_config = get_option( 'front18_synced_config', array() );
+        }
+        return $this->synced_config;
+    }
+
+    private function get_synced_rules() {
+        if ( $this->synced_rules === null ) {
+            $this->synced_rules = get_option( 'front18_synced_rules', false );
+        }
+        return $this->synced_rules;
+    }
+
+    private function get_protected_media() {
+        if ( $this->protected_media === null ) {
+            $this->protected_media = get_option( 'front18_protected_media_ids', array() );
+            if ( ! is_array( $this->protected_media ) ) {
+                $this->protected_media = array();
+            }
+        }
+        return $this->protected_media;
+    }
+
+    // =========================================================================
+    // Anti-Flicker & Injeção HTML
+    // =========================================================================
+
     public function inject_html_class( $attributes ) {
         if ( ! $this->should_run() ) return $attributes;
-        
-        $synced_config = get_option( 'front18_synced_config', array() );
-        $display_mode  = !empty($synced_config['display_mode']) ? $synced_config['display_mode'] : 'global_lock';
-        
+
+        $config       = $this->get_synced_config();
+        $display_mode = ! empty( $config['display_mode'] ) ? $config['display_mode'] : 'global_lock';
+
         $payload = $attributes . ' class="front18-hide"';
-        
-        // Blindagem Nuclear Zero-Ms contra Plugins de Cache (WP Rocket/LiteSpeed CSS Defer)
-        // Se a página for MODO GLOBAL, o bloqueio injetado no HTML Root destrói a chance do Cache carregar a imagem primeiro.
+
+        // Blindagem Nuclear Zero-Ms contra Plugins de Cache (WP Rocket / LiteSpeed CSS Defer)
         if ( $display_mode !== 'granular' && $display_mode !== 'blur_media' ) {
             $payload .= ' style="opacity: 0.01 !important; pointer-events: none !important;"';
         }
-        
+
         return $payload;
     }
 
     public function inject_anti_flicker() {
         if ( ! $this->should_run() ) return;
 
-        $synced_config = get_option( 'front18_synced_config', array() );
-        $display_mode  = !empty($synced_config['display_mode']) ? $synced_config['display_mode'] : 'global_lock';
-        $color_bg      = !empty($synced_config['color_bg']) ? $synced_config['color_bg'] : '#0f172a';
-        
-        $blur_amount   = isset($synced_config['blur_amount']) ? (int)$synced_config['blur_amount'] : 25;
-        $blur_selector = !empty($synced_config['blur_selector']) ? $synced_config['blur_selector'] : 'img, video, iframe, [data-front18="locked"]';
-        $protection_level = isset($synced_config['level']) ? (int)$synced_config['level'] : 1;
-        
-        $protected_ids = get_option( 'front18_protected_media_ids', array() );
+        $config           = $this->get_synced_config();
+        $protected_ids    = $this->get_protected_media();
 
-        // Fallback avançado sempre incluso para casos fora da biblioteca de mídia (Ex: Elementor Background)
+        $display_mode     = ! empty( $config['display_mode'] ) ? $config['display_mode'] : 'global_lock';
+        $color_bg         = ! empty( $config['color_bg'] )     ? $config['color_bg']     : '#0f172a';
+        $blur_amount      = isset( $config['blur_amount'] )    ? (int) $config['blur_amount']  : 25;
+        $blur_selector    = ! empty( $config['blur_selector'] ) ? $config['blur_selector'] : 'img, video, iframe, [data-front18="locked"]';
+        $protection_level = isset( $config['level'] )          ? (int) $config['level']        : 1;
+
         $locked_tag_selector = 'html.front18-hide [data-front18="locked"], html.front18-hide .front18-locked';
 
-        $formatted_selectors = '';
+        // Arquitetura híbrida: seletor genérico + granularidade
+        $formatted_selectors = implode( ', ', array_map( function( $sel ) {
+            return 'html.front18-hide ' . trim( $sel );
+        }, explode( ',', $blur_selector ) ) );
 
-        // Arquitetura Híbrida: Sempre aplica o seletor genérico, mas soma a Granularidade se houver.
-        $formatted_selectors = implode(', ', array_map(function($sel) {
-            return 'html.front18-hide ' . trim($sel);
-        }, explode(',', $blur_selector)));
-
-        if (empty($formatted_selectors)) {
+        if ( empty( $formatted_selectors ) ) {
             $formatted_selectors = 'html.front18-hide img, html.front18-hide video, html.front18-hide iframe, html.front18-hide .e-con, html.front18-hide .elementor-section, html.front18-hide .wp-block-cover, ' . $locked_tag_selector;
         } else {
             $formatted_selectors .= ', ' . $locked_tag_selector . ', html.front18-hide .e-con, html.front18-hide .elementor-section, html.front18-hide .wp-block-cover';
         }
 
-        if ( !empty($protected_ids) && is_array($protected_ids) ) {
-            // Soma a Arquitetura Granular à lista de defesas
-            $granular_selectors = implode(', ', array_map(function($id) {
-                return 'html.front18-hide .wp-image-' . (int)$id . ', html.front18-hide .attachment-' . (int)$id;
-            }, $protected_ids));
-            
+        if ( ! empty( $protected_ids ) ) {
+            $granular_selectors   = implode( ', ', array_map( function( $id ) {
+                return 'html.front18-hide .wp-image-' . (int) $id . ', html.front18-hide .attachment-' . (int) $id;
+            }, $protected_ids ) );
             $formatted_selectors .= ', ' . $granular_selectors;
         }
         ?>
         <!-- FRONT18: ANTI-FLICKER EXTREMO (BLINDADO CONTRA MINIFICAÇÃO) -->
         <style id="front18-antiflicker-css" data-rocket-exclude="true" data-no-optimize="1" data-no-minify="1" data-cfasync="false">
-            /* Camada de Controle Flexível: Adaptável com base na configuração da Edge SaaS */
             <?php if ( $display_mode === 'granular' || $display_mode === 'blur_media' ): ?>
             <?php if ( $protection_level === 2 || $protection_level === 3 ): ?>
-            html.front18-hide { 
-                background-color: <?php echo esc_attr($color_bg); ?> !important;
-                transition: background-color 0.3s ease; 
+            html.front18-hide {
+                background-color: <?php echo esc_attr( $color_bg ); ?> !important;
+                transition: background-color 0.3s ease;
             }
             <?php endif; ?>
-            html.front18-hide body { 
-                pointer-events: none !important; 
-                overflow-x: hidden !important; 
+            html.front18-hide body {
+                pointer-events: none !important;
+                overflow-x: hidden !important;
             }
-            <?php echo $formatted_selectors; ?> { 
+            <?php echo $formatted_selectors; ?> {
                 <?php if ( $protection_level === 3 ): ?>
                 opacity: 0 !important; display: none !important;
                 <?php elseif ( $protection_level === 2 ): ?>
@@ -93,20 +145,20 @@ class Front18_Frontend {
                 <?php endif; ?>
             }
             <?php else: ?>
-            html.front18-hide { 
-                background-color: <?php echo esc_attr($color_bg); ?> !important;
-                transition: background-color 0.3s ease; 
+            html.front18-hide {
+                background-color: <?php echo esc_attr( $color_bg ); ?> !important;
+                transition: background-color 0.3s ease;
             }
-            html.front18-hide body { 
+            html.front18-hide body {
                 opacity: 0 !important;
                 visibility: hidden !important;
-                pointer-events: none !important; 
-                overflow: hidden !important; 
-                touch-action: none !important; 
+                pointer-events: none !important;
+                overflow: hidden !important;
+                touch-action: none !important;
             }
             <?php endif; ?>
         </style>
-        
+
         <script data-no-optimize="1" data-no-minify="1" data-cfasync="false" data-pagespeed-no-defer="1">
             (function(){
                 if (!window.__front18_anti_flicker) {
@@ -118,14 +170,8 @@ class Front18_Frontend {
 
         <noscript>
             <style data-no-optimize="1" data-no-minify="1">
-                html.front18-hide {
-                    opacity: 1 !important;
-                }
-                html.front18-hide body {
-                    pointer-events: auto !important;
-                    overflow: auto !important;
-                    touch-action: auto !important;
-                }
+                html.front18-hide { opacity: 1 !important; }
+                html.front18-hide body { pointer-events: auto !important; overflow: auto !important; touch-action: auto !important; }
             </style>
         </noscript>
         <?php
@@ -135,133 +181,105 @@ class Front18_Frontend {
         if ( ! $this->should_run() ) return;
 
         $api_key       = get_option( 'front18_api_key', '' );
-        $sdk_url       = get_option('front18_sdk_url', 'https://front18.com/public/sdk/front18.js');
+        $sdk_url       = get_option( 'front18_sdk_url', 'https://front18.com/public/sdk/front18.js' );
         $global_object = get_option( 'front18_global_object', 'Front18' );
         $token_key     = get_option( 'front18_token_key', 'api-key' );
         $debug_mode    = get_option( 'front18_debug_mode', false );
 
-        $synced_config = get_option( 'front18_synced_config', array() );
-        $display_mode  = !empty($synced_config['display_mode']) ? $synced_config['display_mode'] : 'global_lock';
-        $blur_amount   = isset($synced_config['blur_amount']) ? (int)$synced_config['blur_amount'] : 25;
-        $blur_selector = !empty($synced_config['blur_selector']) ? $synced_config['blur_selector'] : 'img, video, iframe, [data-front18="locked"]';
-        $color_bg      = !empty($synced_config['color_bg']) ? $synced_config['color_bg'] : '#0f172a';
-        $color_text    = !empty($synced_config['color_text']) ? $synced_config['color_text'] : '#f8fafc';
-        $color_primary = !empty($synced_config['color_primary']) ? $synced_config['color_primary'] : '#6366f1';
+        $config        = $this->get_synced_config();
+        $protected_ids = $this->get_protected_media();
 
-        $parsed_url = wp_parse_url($sdk_url);
-        if ($parsed_url && isset($parsed_url['scheme'], $parsed_url['host'])) {
-            $preconnect_url = $parsed_url['scheme'] . '://' . $parsed_url['host'];
-        } else {
-            $preconnect_url = 'https://front18.com';
-        }
+        $display_mode  = ! empty( $config['display_mode'] ) ? $config['display_mode'] : 'global_lock';
+        $blur_amount   = isset( $config['blur_amount'] ) ? (int) $config['blur_amount'] : 25;
+        $blur_selector = ! empty( $config['blur_selector'] ) ? $config['blur_selector'] : 'img, video, iframe, [data-front18="locked"]';
+        $color_bg      = ! empty( $config['color_bg'] )      ? $config['color_bg']      : '#0f172a';
+        $color_text    = ! empty( $config['color_text'] )    ? $config['color_text']    : '#f8fafc';
+        $color_primary = ! empty( $config['color_primary'] ) ? $config['color_primary'] : '#6366f1';
 
+        $parsed_url     = wp_parse_url( $sdk_url );
+        $preconnect_url = ( $parsed_url && isset( $parsed_url['scheme'], $parsed_url['host'] ) )
+                            ? $parsed_url['scheme'] . '://' . $parsed_url['host']
+                            : 'https://front18.com';
+
+        // Cache buster gerado no servidor (estável e consistente entre múltiplos servidores/cluster)
+        $cache_buster = substr( $api_key, 0, 5 ) . '_d' . gmdate( 'Ymd' );
+
+        // URLs protegidas (resolve ghost dict para IDs sem URL na biblioteca do WP)
+        $synced_rules   = $this->get_synced_rules();
+        $protected_urls = $this->resolve_protected_urls( $protected_ids );
         ?>
         <!-- FRONT18: PRECONNECT -->
-        <link rel="preconnect" href="<?php echo esc_url($preconnect_url); ?>">
-        <link rel="dns-prefetch" href="<?php echo esc_url($preconnect_url); ?>">
+        <link rel="preconnect" href="<?php echo esc_url( $preconnect_url ); ?>">
+        <link rel="dns-prefetch" href="<?php echo esc_url( $preconnect_url ); ?>">
 
         <!-- FRONT18: CARREGADOR E METADADOS -->
         <script data-no-optimize="1" data-no-minify="1" data-cfasync="false" data-pagespeed-no-defer="1">
-            // Prevenção contra múltiplos loads de SDK, Erros em SPAs, Turbolinks e Builders
             if (!window.__front18_loaded__) {
                 window.__front18_loaded__ = Date.now();
 
-                // 1. Estado Nível SaaS (Protegido contra sobrescrita)
                 window.__front18_state__ = Object.assign({
                     locked: true,
                     released: false,
                     releaseReason: null,
                     startedAt: Date.now(),
-                    sdkDetected: false,     // SDK deve atualizar isso imediatamente ao baixar
-                    sdkInitialized: false,  // SDK deve atualizar isso ao botar pra rodar
+                    sdkDetected: false,
+                    sdkInitialized: false,
                     url: location.href,
                     userAgent: navigator.userAgent
                 }, window.__front18_state__ || {});
 
-                // 2. Config Object Seguro (Com Contexto WP Completo para o Payload SaaS)
-                <?php $synced_rules = get_option('front18_synced_rules', array()); ?>
-                <?php
-                $protected_media = get_option( 'front18_protected_media_ids', array() );
-        
-                $protected_urls = array();
-                if ( is_array($protected_media) && !empty($protected_media) ) {
-                    foreach ($protected_media as $id) {
-                        $url = wp_get_attachment_url($id);
-                        
-                        // Ghost Dictionary Fallback: Se não achar na biblioteca do WP, procura na lista de fantasmas que rastreamos
-                        if (!$url) {
-                            $ghost_dict = get_option('front18_ghost_media_dict', array());
-                            $url = isset($ghost_dict[$id]) ? $ghost_dict[$id] : false;
-                        }
-
-                        if ($url) {
-                            $filename = basename($url);
-                            $name_only = pathinfo($filename, PATHINFO_FILENAME);
-                            // Remove sufixos padrão do WP (Ex: foto-1024x768 -> foto)
-                            $base_name = preg_replace('/-[0-9]+x[0-9]+$/', '', $name_only);
-                            $protected_urls[] = $base_name;
-                        }
-                    }
-                }
-                $protected_urls = array_values(array_unique($protected_urls));
-                ?>
-                // Front18 Shield Security Payload
                 window.Front18Config = Object.assign({}, window.Front18Config || {}, {
-                    apiKey: '<?php echo esc_js($api_key); ?>',
-                    mode: '<?php echo esc_js($display_mode); ?>',
-                    level: <?php echo isset($synced_config['level']) ? (int)$synced_config['level'] : 1; ?>,
+                    apiKey: '<?php echo esc_js( $api_key ); ?>',
+                    mode: '<?php echo esc_js( $display_mode ); ?>',
+                    level: <?php echo isset( $config['level'] ) ? (int) $config['level'] : 1; ?>,
                     blur_amount: <?php echo (int) $blur_amount; ?>,
-                    blur_selector: '<?php echo esc_js($blur_selector); ?>',
+                    blur_selector: '<?php echo esc_js( $blur_selector ); ?>',
                     theme: {
-                        bg: '<?php echo esc_js($color_bg); ?>',
-                        primary: '<?php echo esc_js($color_primary); ?>',
-                        text: '<?php echo esc_js($color_text); ?>'
+                        bg: '<?php echo esc_js( $color_bg ); ?>',
+                        primary: '<?php echo esc_js( $color_primary ); ?>',
+                        text: '<?php echo esc_js( $color_text ); ?>'
                     },
                     preventScroll: true,
                     whitelistRoutes: [],
                     protectRoutes: ['*'],
-                    protected_media_ids: <?php echo wp_json_encode( is_array($protected_media) ? array_map('intval', $protected_media) : array() ); ?>,
+                    protected_media_ids: <?php echo wp_json_encode( array_map( 'intval', $protected_ids ) ); ?>,
                     protectedMediaNames: <?php echo wp_json_encode( $protected_urls ); ?>,
                     env: 'wordpress',
                     wpContext: {
                         postId: <?php echo intval( ( is_singular() && get_post() ) ? get_post()->ID : 0 ); ?>,
-                        postType: '<?php echo esc_js( get_post_type() ? get_post_type() : "" ); ?>',
-                        override: '<?php echo esc_js( ( is_singular() && get_post() ) ? (get_post_meta( get_post()->ID, "_front18_protect", true ) ?: "default") : "default" ); ?>',
-                        globalScope: <?php echo !empty($synced_rules['global']) ? 'true' : 'false'; ?>
+                        postType: '<?php echo esc_js( get_post_type() ? get_post_type() : '' ); ?>',
+                        override: '<?php echo esc_js( ( is_singular() && get_post() ) ? ( get_post_meta( get_post()->ID, '_front18_protect', true ) ?: 'default' ) : 'default' ); ?>',
+                        globalScope: <?php echo ! empty( $synced_rules['global'] ) ? 'true' : 'false'; ?>
                     }
                 });
 
-                <?php 
-                // Injeta dinamicamente qualquer chave de configuração avulsa originada da produção (ex: module_type, dpo_only)
+                <?php
+                // Campos extras (módulos estendidos: DPO, Facial, etc.)
+                $known_keys   = array( 'level', 'display_mode', 'color_bg', 'color_primary', 'color_text', 'blur_amount', 'blur_selector' );
                 $extra_config = array();
-                $known_keys = array('level', 'display_mode', 'color_bg', 'color_primary', 'color_text', 'blur_amount', 'blur_selector');
-                if (is_array($synced_config)) {
-                    foreach ( $synced_config as $k => $v ) {
-                        if ( ! in_array( $k, $known_keys ) ) {
-                            $extra_config[$k] = $v;
+                if ( is_array( $config ) ) {
+                    foreach ( $config as $k => $v ) {
+                        if ( ! in_array( $k, $known_keys, true ) ) {
+                            $extra_config[ $k ] = $v;
                         }
                     }
                 }
-                if (!empty($extra_config)): ?>
-                window.Front18Config = Object.assign(window.Front18Config, <?php echo wp_json_encode($extra_config); ?>);
+                if ( ! empty( $extra_config ) ) :
+                ?>
+                window.Front18Config = Object.assign(window.Front18Config, <?php echo wp_json_encode( $extra_config ); ?>);
                 <?php endif; ?>
 
-                // 3. CORE INTERNO: Liberação Idempotente
                 function _front18Unlock(reason) {
                     if (!window.__front18_state__.locked) return;
-
                     document.documentElement.classList.remove('front18-hide');
-                    
-                    window.__front18_state__.locked = false;
-                    window.__front18_state__.released = true;
+                    window.__front18_state__.locked        = false;
+                    window.__front18_state__.released      = true;
                     window.__front18_state__.releaseReason = reason;
-                    window.__front18_state__.latency = Date.now() - window.__front18_state__.startedAt;
-                    
+                    window.__front18_state__.latency       = Date.now() - window.__front18_state__.startedAt;
+
                     var event;
-                    if (typeof CustomEvent === "function") {
-                        event = new CustomEvent('front18:released', {
-                            detail: window.__front18_state__
-                        });
+                    if (typeof CustomEvent === 'function') {
+                        event = new CustomEvent('front18:released', { detail: window.__front18_state__ });
                     } else {
                         event = document.createEvent('CustomEvent');
                         event.initCustomEvent('front18:released', true, true, window.__front18_state__);
@@ -269,28 +287,23 @@ class Front18_Frontend {
                     document.dispatchEvent(event);
                 }
 
-                // 4. API ABERTA (O SDK DEVE usar este Contract Hook global para expor a DOM)
-                var sdkName = '<?php echo esc_js($global_object); ?>' || 'Front18';
+                var sdkName      = '<?php echo esc_js( $global_object ); ?>' || 'Front18';
                 var sdkReleaseFn = sdkName + 'Release';
-                
                 window[sdkReleaseFn] = window.Front18Release = function() {
                     _front18Unlock('sdk');
-                    <?php if ( $debug_mode ) : ?>console.log(<?php echo wp_json_encode( __( '[Front18 CSS] DOM Liberado por SDK em ', 'front18' ) ); ?> + window.__front18_state__.latency + 'ms');<?php endif; ?>
+                    <?php if ( $debug_mode ) : ?>console.log(<?php echo wp_json_encode( __( '[Front18] DOM liberado pelo SDK em ', 'front18' ) ); ?> + window.__front18_state__.latency + 'ms');<?php endif; ?>
                 };
 
-                // 5. Watchdog Estrito e Adaptativo Nível Netflix (Baseado na Rede)
                 var maxTimeout = (navigator.connection && navigator.connection.effectiveType === '4g') ? 2000 : 3500;
                 setTimeout(function() {
                     if (document.documentElement.classList.contains('front18-hide')) {
                         window.__front18_state__.failed = true;
-                        
-                        // Diagnóstico de Falha Nível Produto: Identifica 100% onde foi a quebra
                         if (!window.__front18_state__.sdkDetected) {
                             _front18Unlock('sdk_not_loaded');
-                            <?php if ( $debug_mode ) : ?>console.warn(<?php echo wp_json_encode( __( '[Front18 Watchdog] CDN inalcançável. O SDK não pôde ser baixado na rede do cliente.', 'front18' ) ); ?>);<?php endif; ?>
+                            <?php if ( $debug_mode ) : ?>console.warn(<?php echo wp_json_encode( __( '[Front18 Watchdog] CDN inalcançável. SDK não pôde ser baixado.', 'front18' ) ); ?>);<?php endif; ?>
                         } else if (!window.__front18_state__.sdkInitialized) {
                             _front18Unlock('sdk_fail');
-                            <?php if ( $debug_mode ) : ?>console.warn(<?php echo wp_json_encode( __( '[Front18 Watchdog] SDK retornado, mas sofreu fatal error de inicialização interna.', 'front18' ) ); ?>);<?php endif; ?>
+                            <?php if ( $debug_mode ) : ?>console.warn(<?php echo wp_json_encode( __( '[Front18 Watchdog] SDK retornado mas com erro de inicialização.', 'front18' ) ); ?>);<?php endif; ?>
                         } else {
                             _front18Unlock('timeout');
                             <?php if ( $debug_mode ) : ?>console.warn(<?php echo wp_json_encode( __( '[Front18 Watchdog] Timeout adaptativo estourado.', 'front18' ) ); ?>);<?php endif; ?>
@@ -298,13 +311,8 @@ class Front18_Frontend {
                     }
                 }, maxTimeout);
 
-                // EXTERNAL SDK INJECTION (Controle Dinâmico Absoluto com Defer Estrito e Data Attributes Payload)
                 var sdkScript = document.createElement('script');
-                // Cache Buster por Dia: Força os clientes a baixarem atualizações do SaaS 1x por dia, sem DDOS.
-                var cacheBuster = window.Front18Config.apiKey.substring(0,5) + '_d' + Math.floor(Date.now() / 86400000);
-                sdkScript.src = "<?php echo esc_url( $sdk_url ); ?>?v=" + cacheBuster;
-                // Removemos o defer para garantir que a injeção inicie de imediato 
-                // para o Watchdog do antiflicker registrar o SDK
+                sdkScript.src = '<?php echo esc_url( $sdk_url ); ?>?v=<?php echo esc_attr( $cache_buster ); ?>';
                 sdkScript.setAttribute('data-cfasync', 'false');
                 sdkScript.setAttribute('data-no-optimize', '1');
                 sdkScript.setAttribute('data-auto-init', 'true');
@@ -315,6 +323,10 @@ class Front18_Frontend {
         <?php
     }
 
+    // =========================================================================
+    // Escopo — Deve injetar o SDK nesta página?
+    // =========================================================================
+
     private function should_run() {
         if ( $this->should_run_cached !== null ) {
             return $this->should_run_cached;
@@ -324,87 +336,116 @@ class Front18_Frontend {
     }
 
     private function _calculate_scope() {
-        if ( is_admin() || (function_exists('wp_doing_ajax') && wp_doing_ajax()) || (defined('DOING_AJAX') && DOING_AJAX) || is_feed() ) return false;
+        if ( is_admin() ) return false;
+        if ( function_exists( 'wp_doing_ajax' ) && wp_doing_ajax() ) return false;
+        if ( defined( 'DOING_AJAX' ) && DOING_AJAX ) return false;
+        if ( is_feed() ) return false;
+
         if ( ! get_option( 'front18_enabled', false ) ) return false;
-        
+
         $api_key = get_option( 'front18_api_key', '' );
         if ( empty( $api_key ) ) return false;
 
         $current_post = get_post();
         $current_id   = ( is_singular() && $current_post ) ? $current_post->ID : 0;
 
-        // 0. Regra Soberana Nível Meta Box (Override Editando a Própria Página)
+        // Regra soberana: override por meta box da página
         if ( $current_id > 0 ) {
             $meta_override = get_post_meta( $current_id, '_front18_protect', true );
-            if ( $meta_override === 'protect' ) return true;
+            if ( $meta_override === 'protect' )   return true;
             if ( $meta_override === 'unprotect' ) return false;
         }
-        
+
+        // Exclusão explícita por IDs
         $exclude_ids = get_option( 'front18_exclude_ids', '' );
         if ( ! empty( $exclude_ids ) && $current_id > 0 ) {
             $exclude_arr = array_map( 'intval', explode( ',', $exclude_ids ) );
-            if ( in_array( $current_id, $exclude_arr ) ) return false;
+            if ( in_array( $current_id, $exclude_arr, true ) ) return false;
         }
 
+        // Inclusão explícita por IDs
         $include_ids = get_option( 'front18_include_ids', '' );
         if ( ! empty( $include_ids ) && $current_id > 0 ) {
             $include_arr = array_map( 'intval', explode( ',', $include_ids ) );
-            if ( in_array( $current_id, $include_arr ) ) return true;
+            if ( in_array( $current_id, $include_arr, true ) ) return true;
         }
 
-        $synced_config = get_option('front18_synced_config', array());
-        $display_mode = sanitize_text_field( $synced_config['display_mode'] ?? 'global_lock' );
-        $protected_media = get_option( 'front18_protected_media_ids', array() );
+        $config          = $this->get_synced_config();
+        $display_mode    = sanitize_text_field( $config['display_mode'] ?? 'global_lock' );
+        $protected_media = $this->get_protected_media();
 
-        // 1. FORÇAMENTO GLOBAL INTELIGENTE (Matriz Granular Ativa = Auto-Injeção em Todo Site)
-        // Se há imagens selecionadas na Matriz O SaaS EXIGE que o Shield cace-as em qualquer rota!
-        if ( !empty($protected_media) && $display_mode === 'blur_media' ) {
+        // Modo blur_media com imagens selecionadas: protege todo o site
+        if ( ! empty( $protected_media ) && $display_mode === 'blur_media' ) {
             return true;
         }
 
-        $synced_rules = get_option('front18_synced_rules', false);
+        // Regras sincronizadas pelo SaaS
+        $synced_rules = $this->get_synced_rules();
 
-        // Migração Silenciosa de Versão (Garante que sites antigos continuem protegidos ao atualizarem hoje)
+        // NOTA: Migração de versão legada foi movida para o hook upgrader_process_complete
+        // no arquivo principal do plugin (seusdk-wp-plugin.php) para não executar em toda request.
         if ( $synced_rules === false ) {
-            $synced_rules = array(
-                'global' => get_option('front18_scope_global', false),
-                'home'   => get_option('front18_scope_home', false),
-                'cpts'   => array()
-            );
-            $all_cpts = get_post_types( array( 'public' => true ) );
-            foreach ( $all_cpts as $cpt ) {
-                if ( get_option('front18_scope_cpt_' . $cpt, false) ) {
-                    $synced_rules['cpts'][] = $cpt;
-                }
-            }
-            update_option('front18_synced_rules', $synced_rules);
+            return false;
         }
 
-        if ( !empty($synced_rules['global']) ) return true;
+        if ( ! empty( $synced_rules['global'] ) ) return true;
 
         if ( is_front_page() || is_home() ) {
-            if ( !empty($synced_rules['home']) ) return true;
+            if ( ! empty( $synced_rules['home'] ) ) return true;
         }
 
-        $cpts = isset($synced_rules['cpts']) && is_array($synced_rules['cpts']) ? $synced_rules['cpts'] : array();
+        $cpts = isset( $synced_rules['cpts'] ) && is_array( $synced_rules['cpts'] ) ? $synced_rules['cpts'] : array();
 
         if ( is_singular() ) {
             $post_type = get_post_type();
-            if ( in_array($post_type, $cpts) ) return true;
-        } else if ( is_archive() || is_post_type_archive() ) {
+            if ( in_array( $post_type, $cpts, true ) ) return true;
+        } elseif ( is_archive() || is_post_type_archive() ) {
             $post_type = get_post_type();
-            if ( $post_type && in_array($post_type, $cpts) ) return true;
+            if ( $post_type && in_array( $post_type, $cpts, true ) ) return true;
         }
 
         return false;
     }
+
+    // =========================================================================
+    // Helpers
+    // =========================================================================
+
+    /**
+     * Resolve URLs amigáveis a partir dos IDs de mídias protegidas.
+     * Consulta o ghost dict para IDs sem URL na biblioteca do WP.
+     */
+    private function resolve_protected_urls( array $protected_ids ) {
+        if ( empty( $protected_ids ) ) return array();
+
+        $ghost_dict     = get_option( 'front18_ghost_media_dict', array() );
+        $protected_urls = array();
+
+        foreach ( $protected_ids as $id ) {
+            $url = wp_get_attachment_url( $id );
+            if ( ! $url && isset( $ghost_dict[ $id ] ) ) {
+                $url = $ghost_dict[ $id ];
+            }
+            if ( $url ) {
+                $filename   = basename( $url );
+                $name_only  = pathinfo( $filename, PATHINFO_FILENAME );
+                $base_name  = preg_replace( '/-[0-9]+x[0-9]+$/', '', $name_only );
+                $protected_urls[] = $base_name;
+            }
+        }
+
+        return array_values( array_unique( $protected_urls ) );
+    }
+
+    // =========================================================================
+    // Shortcodes
+    // =========================================================================
 
     public function render_shortcode( $atts ) {
         return '<div id="front18-inline" class="front18-sdk-rendered" style="display:none;"></div>';
     }
 
     public function render_lock_shortcode( $atts, $content = null ) {
-        // Envolve o conteúdo apenas se estivemos no front-end real.
         if ( is_null( $content ) || is_admin() ) return $content;
         return '<div class="Front18-lock" data-front18="locked">' . do_shortcode( $content ) . '</div>';
     }

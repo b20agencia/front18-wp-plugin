@@ -3,7 +3,7 @@
  * Plugin Name: Front18 Security Integration
  * Plugin URI:  https://front18.com/wordpress
  * Description: O motor de segurança definitiva (Anti-Flicker) para o SDK Front18. Isola e protege seu conteúdo sensível antes mesmo da página renderizar.
- * Version:     1.0.2
+ * Version:     1.1.0
  * Author:      Front18 Engineering
  * Author URI:  https://front18.com
  * Text Domain: front18
@@ -17,7 +17,7 @@ if ( ! defined( 'WPINC' ) ) {
 // ==============================================================================
 // 1. Constantes do Plugin
 // ==============================================================================
-define( 'FRONT18_VERSION', '1.0.2' );
+define( 'FRONT18_VERSION', '1.1.0' );
 define( 'FRONT18_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'FRONT18_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'FRONT18_OPTION_GROUP', 'front18_options_group' );
@@ -60,10 +60,18 @@ function front18_activate_plugin() {
     // 2. Seed Mestre Segura 
     // Usamos add_option invés de update. Assim apenas gravamos os Defaults Prontos pro SaaS SE eles não existirem no BD cliente.
     // Isso garante que se o cliente desativar e reativar o plugin, o progresso/regras dele sejam preservadas!
-    add_option( 'front18_enabled', 0 ); // O Plugin deve nascer sempre bloqueado (Disabled = 0) para o cliente não cegar o site sem querer
+    add_option( 'front18_enabled', 0 );        // O Plugin deve nascer sempre bloqueado (Disabled = 0)
     add_option( 'front18_sdk_url', 'https://front18.com/public/sdk/front18.js' );
     add_option( 'front18_global_object', 'Front18' );
     add_option( 'front18_token_key', 'api-key' );
+    // Estruturas de sincronização (inicializadas como vazias para evitar erros na primeira carga)
+    add_option( 'front18_synced_rules', false );
+    add_option( 'front18_synced_config', array() );
+    add_option( 'front18_protected_media_ids', array() );
+    add_option( 'front18_ghost_media_dict', array() );
+
+    // Migração silenciosa: converte opções legadas (< 1.1.0) para o novo formato sincronizado
+    front18_run_data_migration();
 }
 // Registra o gancho apenas se o Admin clicar explicitamente em "Ativar Plugin" no Repositório do wp-admin
 register_activation_hook( __FILE__, 'front18_activate_plugin' );
@@ -85,7 +93,7 @@ register_deactivation_hook( __FILE__, 'front18_deactivate_plugin' );
 // ==============================================================================
 
 function front18_integration_init() {
-    
+
     // A API precisa escutar todas as rotas (frontend/backend) logo ela deve ser inicializada na árvore root
     require_once FRONT18_PLUGIN_DIR . 'includes/class-seusdk-api.php';
     $plugin_api = new Front18_API();
@@ -96,7 +104,7 @@ function front18_integration_init() {
         require_once FRONT18_PLUGIN_DIR . 'includes/class-seusdk-admin.php';
         $plugin_admin = new Front18_Admin();
         $plugin_admin->init();
-    } 
+    }
     // Caso contrário carrega as lógicas da Interface Pública (Frontend), poupando RAM no Painel e vis-versa.
     else {
         require_once FRONT18_PLUGIN_DIR . 'includes/class-seusdk-frontend.php';
@@ -104,4 +112,53 @@ function front18_integration_init() {
         $plugin_frontend->init();
     }
 }
-add_action('plugins_loaded', 'front18_integration_init');
+add_action( 'plugins_loaded', 'front18_integration_init' );
+
+
+// ==============================================================================
+// 5. Migração de Dados Legados (Executada apenas na ativação/atualização do plugin)
+// ==============================================================================
+
+/**
+ * Migra opções legadas (< 1.1.0) para o novo formato de regras sincronizadas.
+ * Evita que a migração ocorra dentro da _calculate_scope() em cada request de produção.
+ */
+function front18_run_data_migration() {
+    if ( get_option( 'front18_synced_rules' ) !== false ) {
+        return; // Já migrado
+    }
+
+    $migrated_rules = array(
+        'global' => (bool) get_option( 'front18_scope_global', false ),
+        'home'   => (bool) get_option( 'front18_scope_home', false ),
+        'cpts'   => array(),
+    );
+
+    $all_cpts = get_post_types( array( 'public' => true ) );
+    foreach ( $all_cpts as $cpt ) {
+        if ( get_option( 'front18_scope_cpt_' . $cpt, false ) ) {
+            $migrated_rules['cpts'][] = $cpt;
+        }
+    }
+
+    update_option( 'front18_synced_rules', $migrated_rules );
+}
+
+/**
+ * Hook de atualização automática: aciona migração quando o plugin é atualizado via wp-admin.
+ */
+function front18_on_plugin_upgrade( $upgrader_object, $options ) {
+    if (
+        isset( $options['action'], $options['type'], $options['plugins'] ) &&
+        $options['action'] === 'update' &&
+        $options['type']   === 'plugin'
+    ) {
+        $this_plugin = plugin_basename( __FILE__ );
+        if ( in_array( $this_plugin, (array) $options['plugins'], true ) ) {
+            front18_run_data_migration();
+            // Invalida o cache do Ghost Tracker após atualização
+            delete_transient( 'front18_ghost_tracker_cache' );
+        }
+    }
+}
+add_action( 'upgrader_process_complete', 'front18_on_plugin_upgrade', 10, 2 );
