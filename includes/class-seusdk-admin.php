@@ -372,50 +372,98 @@ class Front18_Admin {
                 </div>
                 <?php endif; ?>
 
-                <!-- AS REGRAS AGORA SÃO 100% GERENCIADAS PELO SAAS FRONT18.COM -->
-
                 <!-- 4. SHORTCODES -->
                 <details class="front18-debug-details">
-                    <summary><?php esc_html_e( 'Shortcodes Disponíveis', 'front18' ); ?></summary>
+                    <summary><?php esc_html_e( '📋 Como proteger partes específicas da página (Shortcodes)', 'front18' ); ?></summary>
                     <div class="front18-card" style="margin-top: 15px;">
-                        <p class="card-desc" style="margin-bottom:15px;"><?php esc_html_e( 'Use estes shortcodes no editor de páginas para controle granular por bloco de conteúdo.', 'front18' ); ?></p>
+                        <p class="card-desc" style="margin-bottom: 20px; line-height: 1.7;">
+                            <?php esc_html_e( 'Por padrão, o Front18 protege a página inteira quando ativado. Mas às vezes você quer proteger apenas um bloco — uma foto, um vídeo, uma seção de conteúdo premium. Para isso, use os recursos abaixo diretamente no editor de páginas.', 'front18' ); ?>
+                        </p>
+
                         <div class="front18-shortcode-block">
-                            <code>[front18]</code>
-                            <small><?php esc_html_e( 'Injeta o contêiner do SDK no meio de uma página (útil para Single Page Applications e layouts customizados).', 'front18' ); ?></small>
+                            <div style="display:flex; align-items:center; gap:10px; margin-bottom:6px;">
+                                <code>[front18]</code>
+                                <span style="background: rgba(99,102,241,0.15); color:#a5b4fc; font-size:11px; padding:2px 8px; border-radius:20px; font-weight:600;"><?php esc_html_e( 'Avançado', 'front18' ); ?></span>
+                            </div>
+                            <small>
+                                <strong><?php esc_html_e( 'Quando usar:', 'front18' ); ?></strong>
+                                <?php esc_html_e( 'Quando você quer inserir o ponto de controle do SDK em um local exato da página — por exemplo, dentro de um template PHP ou construtor de página personalizado. Na maioria dos casos você não precisa deste shortcode.', 'front18' ); ?>
+                            </small>
                         </div>
+
                         <div class="front18-shortcode-block">
-                            <code>[front18_lock]Seu conteúdo protegido aqui[/front18_lock]</code>
-                            <small><?php esc_html_e( 'Envolve qualquer bloco de conteúdo com um contêiner protegido. O Front18 aplicará blur ou ocultação apenas neste bloco, independentemente do modo global.', 'front18' ); ?></small>
+                            <div style="display:flex; align-items:center; gap:10px; margin-bottom:6px;">
+                                <code>[front18_lock]Conteúdo aqui[/front18_lock]</code>
+                                <span style="background: rgba(248,113,113,0.15); color:#fca5a5; font-size:11px; padding:2px 8px; border-radius:20px; font-weight:600;"><?php esc_html_e( 'Mais usado', 'front18' ); ?></span>
+                            </div>
+                            <small>
+                                <strong><?php esc_html_e( 'Quando usar:', 'front18' ); ?></strong>
+                                <?php esc_html_e( 'Para proteger apenas um bloco específico — uma imagem, um vídeo, uma seção de conteúdo premium — sem precisar ativar a proteção global na página inteira. Cole este shortcode no editor Gutenberg ou no editor clássico em volta do conteúdo que deseja proteger.', 'front18' ); ?>
+                            </small>
                         </div>
+
                         <div class="front18-shortcode-block">
-                            <code>&lt;div data-front18="locked"&gt;...&lt;/div&gt;</code>
-                            <small><?php esc_html_e( 'Alternativa HTML puro ao shortcode [front18_lock]. Útil em templates de tema, blocos HTML e construtores que não suportam shortcodes aninhados.', 'front18' ); ?></small>
+                            <div style="display:flex; align-items:center; gap:10px; margin-bottom:6px;">
+                                <code>&lt;div data-front18="locked"&gt;...&lt;/div&gt;</code>
+                                <span style="background: rgba(52,211,153,0.15); color:#6ee7b7; font-size:11px; padding:2px 8px; border-radius:20px; font-weight:600;"><?php esc_html_e( 'Para devs', 'front18' ); ?></span>
+                            </div>
+                            <small>
+                                <strong><?php esc_html_e( 'Quando usar:', 'front18' ); ?></strong>
+                                <?php esc_html_e( 'Tem o mesmo efeito que [front18_lock], mas escrito em HTML puro. Use quando estiver editando um template de tema (.php), um bloco HTML do Gutenberg, ou um construtor de páginas (Elementor, Divi) que não aceita shortcodes aninhados.', 'front18' ); ?>
+                            </small>
                         </div>
                     </div>
                 </details>
 
-                <!-- 5. DEBUG / ADVANCED -->
+                <!-- 5. CONFIGURAÇÕES AVANÇADAS -->
                 <details class="front18-debug-details">
-                    <summary><?php esc_html_e( 'Painel de Desenvolvedor e Integração Customizada', 'front18' ); ?></summary>
+                    <summary><?php esc_html_e( '⚙️ Configurações Avançadas (não altere sem orientação da Front18)', 'front18' ); ?></summary>
                     <div class="front18-card" style="margin-top: 15px;">
+
+                        <p class="card-desc" style="margin-bottom: 20px; line-height: 1.7; color: #fbbf24;">
+                            ⚠️ <?php esc_html_e( 'Estes campos são preenchidos automaticamente durante a ativação. Só altere se a equipe Front18 solicitar, ou se você estiver usando um ambiente de staging/homologação com URL diferente.', 'front18' ); ?>
+                        </p>
+
                         <div class="front18-row" style="flex-direction: column; align-items: stretch; gap: 8px;">
-                            <div class="front18-row-title"><?php esc_html_e( 'URL Base do SDK Front18', 'front18' ); ?></div>
+                            <div class="front18-row-title">
+                                <?php esc_html_e( 'URL do Script Front18', 'front18' ); ?>
+                            </div>
+                            <div class="front18-row-desc" style="margin-bottom:6px;">
+                                <?php esc_html_e( 'Endereço onde o script de proteção está hospedado. Padrão: servidor Front18. Altere apenas se estiver usando CDN próprio ou ambiente de testes.', 'front18' ); ?>
+                            </div>
                             <input type="text" name="front18_sdk_url" class="front18-input" value="<?php echo esc_url( $sdk_url ); ?>" />
                         </div>
-                        <div style="display: flex; gap: 20px; margin-top: 15px;">
+
+                        <div style="display: flex; gap: 20px; margin-top: 20px;">
                             <div style="flex:1;">
-                                <div class="front18-row-title" style="margin-bottom:8px;"><?php esc_html_e( 'Objeto Padrão (JS)', 'front18' ); ?></div>
+                                <div class="front18-row-title" style="margin-bottom:4px;">
+                                    <?php esc_html_e( 'Nome do Objeto JavaScript', 'front18' ); ?>
+                                </div>
+                                <div class="front18-row-desc" style="margin-bottom:8px; font-size:12px;">
+                                    <?php esc_html_e( 'Variável global criada no browser (window.Front18). Padrão: Front18.', 'front18' ); ?>
+                                </div>
                                 <input type="text" name="front18_global_object" class="front18-input" value="<?php echo esc_attr( $global_object ); ?>" />
                             </div>
                             <div style="flex:1;">
-                                <div class="front18-row-title" style="margin-bottom:8px;"><?php esc_html_e( 'Chave Interna Token', 'front18' ); ?></div>
+                                <div class="front18-row-title" style="margin-bottom:4px;">
+                                    <?php esc_html_e( 'Parâmetro do Token', 'front18' ); ?>
+                                </div>
+                                <div class="front18-row-desc" style="margin-bottom:8px; font-size:12px;">
+                                    <?php esc_html_e( 'Nome interno do campo que transporta o token de autenticação. Padrão: api-key.', 'front18' ); ?>
+                                </div>
                                 <input type="text" name="front18_token_key" class="front18-input" value="<?php echo esc_attr( $token_key ); ?>" />
                             </div>
                         </div>
-                        <div class="front18-row" style="margin-top:15px; border-top: 1px solid #f1f5f9; padding-top: 20px;">
+
+                        <div class="front18-row" style="margin-top:20px; border-top: 1px solid rgba(255,255,255,0.07); padding-top: 20px;">
                             <div class="front18-col">
-                                <div class="front18-row-title"><?php esc_html_e( 'Ligar Telemetria Console (F12)', 'front18' ); ?></div>
-                                <div class="front18-row-desc"><?php esc_html_e( 'Grava logs de Render Timeline e Retenção no painel de desenvolvedor do navegador.', 'front18' ); ?></div>
+                                <div class="front18-row-title">
+                                    <?php esc_html_e( 'Modo Debug (Log no Console do Navegador)', 'front18' ); ?>
+                                </div>
+                                <div class="front18-row-desc">
+                                    <?php esc_html_e( 'Quando ativo, o Front18 exibe mensagens detalhadas no Console do navegador (F12 → Aba Console). Use apenas para diagnosticar problemas — nunca deixe ligado em produção, pois expõe informações internas do SDK.', 'front18' ); ?>
+                                    <br><span style="color:#f87171; font-size:11px; margin-top:4px; display:block;">🚫 <?php esc_html_e( 'Desligue após o diagnóstico.', 'front18' ); ?></span>
+                                </div>
                             </div>
                             <label class="front18-switch">
                                 <input type="checkbox" name="front18_debug_mode" value="1" <?php checked( 1, $debug_mode, true ); ?> />
