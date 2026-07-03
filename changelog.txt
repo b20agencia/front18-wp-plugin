@@ -1,5 +1,9 @@
 === Front18 Security Integration Changelog ===
 
+= 1.1.1 =
+* Hotfix: substitui placeholder %i do $wpdb->prepare() por interpolação direta — corrige Fatal Error em WordPress < 6.2.
+* O placeholder %i para nomes de tabela foi introduzido apenas no WordPress 6.2 (maio 2023). Sites em versões anteriores recebiam um erro fatal ao ativar o plugin após a atualização 1.1.0.
+
 = 1.1.0 =
 * Segurança: hash_equals() na verificação da API Key — previne timing attacks.
 * Segurança: $wpdb->prepare() em todas as queries diretas na classe API.
