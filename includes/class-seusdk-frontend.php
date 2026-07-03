@@ -100,6 +100,18 @@ class Front18_Frontend {
         $blur_selector    = ! empty( $config['blur_selector'] ) ? $config['blur_selector'] : 'img, video, iframe, [data-front18="locked"]';
         $protection_level = isset( $config['level'] )          ? (int) $config['level']        : 1;
 
+        // Seletores excluídos do blur (AdSense, rodapé, etc.)
+        $excluded_selectors_raw = ! empty( $config['excluded_selectors'] )
+            ? $config['excluded_selectors']
+            : 'ins.adsbygoogle, .adsbygoogle, iframe[src*="googlesyndication.com"], iframe[src*="doubleclick.net"], [id^="google_ads"], .google-auto-placed';
+
+        // Formata seletores de exclusão com prefixo html.front18-hide
+        $formatted_exclusions = implode( ', ', array_map( function( $sel ) {
+            return 'html.front18-hide ' . trim( $sel );
+        }, array_filter( explode( ',', $excluded_selectors_raw ), function( $s ) {
+            return ! empty( trim( $s ) );
+        } ) ) );
+
         $locked_tag_selector = 'html.front18-hide [data-front18="locked"], html.front18-hide .front18-locked';
 
         // Arquitetura híbrida: seletor genérico + granularidade
@@ -169,6 +181,17 @@ class Front18_Frontend {
                 pointer-events: none !important;
                 overflow: hidden !important;
                 touch-action: none !important;
+            }
+            <?php endif; ?>
+            <?php if ( ! empty( $formatted_exclusions ) ) : ?>
+            /* ===== FRONT18: SELETORES EXCLUÍDOS (Anti-Ban AdSense + Rodapé) ===== */
+            <?php echo $formatted_exclusions; ?> {
+                filter: none !important;
+                opacity: 1 !important;
+                visibility: visible !important;
+                display: revert !important;
+                pointer-events: auto !important;
+                backdrop-filter: none !important;
             }
             <?php endif; ?>
         </style>
