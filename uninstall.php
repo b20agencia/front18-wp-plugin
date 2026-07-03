@@ -56,10 +56,10 @@ delete_transient( 'front18_ghost_tracker_cache' );
 
 // 4. Garbage Collection: Remove metadados de posts (overrides de Meta Box)
 global $wpdb;
+// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 $wpdb->query(
     $wpdb->prepare(
-        "DELETE FROM %i WHERE meta_key = %s",
-        $wpdb->postmeta,
+        "DELETE FROM {$wpdb->postmeta} WHERE meta_key = %s",
         '_front18_protect'
     )
 );

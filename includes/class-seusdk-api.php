@@ -275,14 +275,14 @@ class Front18_API {
     public function get_media_types( WP_REST_Request $request ) {
         global $wpdb;
 
+        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- tabela interna do WP, sem input do usuário
         $rows = $wpdb->get_results(
             $wpdb->prepare(
                 "SELECT DISTINCT post_mime_type, COUNT(*) AS total
-                 FROM %i
+                 FROM {$wpdb->posts}
                  WHERE post_type = %s AND post_status = %s AND post_mime_type != ''
                  GROUP BY post_mime_type
                  ORDER BY total DESC",
-                $wpdb->posts,
                 'attachment',
                 'inherit'
             )
@@ -409,10 +409,10 @@ class Front18_API {
         $offset = 0;
         $batch  = 50;
         do {
+            // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
             $rows = $wpdb->get_col(
                 $wpdb->prepare(
-                    "SELECT meta_value FROM %i WHERE meta_key = %s LIMIT %d OFFSET %d",
-                    $wpdb->postmeta,
+                    "SELECT meta_value FROM {$wpdb->postmeta} WHERE meta_key = %s LIMIT %d OFFSET %d",
                     '_elementor_data',
                     $batch,
                     $offset
@@ -426,13 +426,13 @@ class Front18_API {
 
         // 2. ACF (campos de imagem e galeria)
         // Nota: _ é wildcard SQL — deve ser escapado com esc_like() antes de passar ao prepare()
+        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
         $acf_rows = $wpdb->get_col(
             $wpdb->prepare(
-                "SELECT meta_value FROM %i
+                "SELECT meta_value FROM {$wpdb->postmeta}
                  WHERE meta_key NOT LIKE %s
                    AND meta_value LIKE %s
                  LIMIT 200",
-                $wpdb->postmeta,
                 $wpdb->esc_like( '_' ) . '%', // exclui campos internos do WP (ex: _wp_*, _elementor_*, etc.)
                 '%wp-content/uploads%'
             )
@@ -442,11 +442,11 @@ class Front18_API {
         }
 
         // 3. WooCommerce: imagem principal e galeria de produtos
+        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
         $woo_rows = $wpdb->get_col(
             $wpdb->prepare(
-                "SELECT meta_value FROM %i
+                "SELECT meta_value FROM {$wpdb->postmeta}
                  WHERE meta_key IN (%s, %s)",
-                $wpdb->postmeta,
                 '_product_image_gallery',
                 '_thumbnail_id'
             )
@@ -456,13 +456,13 @@ class Front18_API {
         }
 
         // 4. Divi Builder (et_pb_* options guardadas nos postmeta)
+        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
         $divi_rows = $wpdb->get_col(
             $wpdb->prepare(
-                "SELECT meta_value FROM %i
+                "SELECT meta_value FROM {$wpdb->postmeta}
                  WHERE meta_key LIKE %s
                    AND meta_value LIKE %s
                  LIMIT 100",
-                $wpdb->postmeta,
                 'et_pb_%',
                 '%wp-content%'
             )
@@ -472,10 +472,10 @@ class Front18_API {
         }
 
         // 5. Theme Mods (Customizer)
+        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
         $theme_mods = $wpdb->get_col(
             $wpdb->prepare(
-                "SELECT option_value FROM %i WHERE option_name LIKE %s",
-                $wpdb->options,
+                "SELECT option_value FROM {$wpdb->options} WHERE option_name LIKE %s",
                 'theme_mods_%'
             )
         );
