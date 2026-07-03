@@ -75,6 +75,13 @@ class Front18_API {
             'callback'            => array( $this, 'get_media_types' ),
             'permission_callback' => array( $this, 'check_permission' ),
         ) );
+
+        // GET /wp-json/front18/v1/ping — Health-check público: confirma que o plugin está ativo
+        register_rest_route( 'front18/v1', '/ping', array(
+            'methods'             => WP_REST_Server::READABLE,
+            'callback'            => array( $this, 'handle_ping' ),
+            'permission_callback' => '__return_true', // Público — sem autenticação necessária
+        ) );
     }
 
     // =========================================================================
@@ -100,7 +107,42 @@ class Front18_API {
     }
 
     // =========================================================================
-    // 3. Webhook — Recebe push de regras do SaaS
+    // 3. Health-Check Público (Ping)
+    // =========================================================================
+
+    /**
+     * GET /wp-json/front18/v1/ping
+     * Endpoint público usado pelo SaaS para confirmar que o plugin está instalado e ativo.
+     * Não requer autenticação — apenas informa a presença do plugin, versão e última sincronização.
+     */
+    public function handle_ping( WP_REST_Request $request ) {
+        $enabled  = (bool) get_option( 'front18_enabled', 0 );
+        $has_key  = ! empty( get_option( 'front18_api_key', '' ) );
+        $last_sync = get_option( 'front18_last_sync', null );
+
+        // 'ok'       → plugin ativo e API Key configurada
+        // 'degraded' → plugin ativo mas sem API Key (não sincronizado)
+        // 'disabled' → plugin instalado mas desativado pelo admin
+        if ( ! $enabled ) {
+            $status = 'disabled';
+        } elseif ( ! $has_key ) {
+            $status = 'degraded';
+        } else {
+            $status = 'ok';
+        }
+
+        return rest_ensure_response( array(
+            'front18'   => true,
+            'version'   => defined( 'FRONT18_VERSION' ) ? FRONT18_VERSION : 'unknown',
+            'status'    => $status,
+            'enabled'   => $enabled,
+            'synced'    => ! empty( $last_sync ),
+            'last_sync' => $last_sync,
+        ) );
+    }
+
+    // =========================================================================
+    // 4. Webhook — Recebe push de regras do SaaS
     // =========================================================================
 
     public function handle_webhook( WP_REST_Request $request ) {

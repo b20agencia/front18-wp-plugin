@@ -1,5 +1,14 @@
 === Front18 Security Integration Changelog ===
 
+= 1.1.2 =
+* Feature: novo endpoint público GET /wp-json/front18/v1/ping — health-check para o SaaS confirmar que o plugin está instalado e ativo.
+* O /ping retorna: version, status (ok / degraded / disabled), enabled, synced e last_sync.
+* status 'ok' = plugin ativo e API Key configurada.
+* status 'degraded' = plugin ativo mas sem API Key (aguardando configuração inicial).
+* status 'disabled' = plugin instalado mas desativado no painel WordPress.
+* UX: seção de Shortcodes no painel admin reescrita com linguagem mais didática e badges por perfil de uso.
+* UX: Painel de Desenvolvedor renomeado para "Configurações Avançadas" com avisos sobre uso em produção.
+
 = 1.1.1 =
 * Hotfix: substitui placeholder %i do $wpdb->prepare() por interpolação direta — corrige Fatal Error em WordPress < 6.2.
 * O placeholder %i para nomes de tabela foi introduzido apenas no WordPress 6.2 (maio 2023). Sites em versões anteriores recebiam um erro fatal ao ativar o plugin após a atualização 1.1.0.
