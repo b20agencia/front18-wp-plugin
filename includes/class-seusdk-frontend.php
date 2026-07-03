@@ -170,6 +170,17 @@ class Front18_Frontend {
                 -webkit-user-drag: none !important;
                 <?php endif; ?>
             }
+            <?php if ( ! empty( $formatted_exclusions ) ) : ?>
+            /* ===== FRONT18: SELETORES EXCLUÍDOS (Anti-Ban AdSense + Rodapé) ===== */
+            <?php echo $formatted_exclusions; ?> {
+                filter: none !important;
+                opacity: 1 !important;
+                visibility: visible !important;
+                display: revert !important;
+                pointer-events: auto !important;
+                backdrop-filter: none !important;
+            }
+            <?php endif; ?>
             <?php else: ?>
             html.front18-hide {
                 background-color: <?php echo esc_attr( $color_bg ); ?> !important;
@@ -184,13 +195,12 @@ class Front18_Frontend {
             }
             <?php endif; ?>
             <?php if ( ! empty( $formatted_exclusions ) ) : ?>
-            /* ===== FRONT18: SELETORES EXCLUÍDOS (Anti-Ban AdSense + Rodapé) ===== */
+            /* ===== FRONT18: SELETORES EXCLUÍDOS - GLOBAL LOCK (Anti-Ban AdSense) ===== */
             <?php echo $formatted_exclusions; ?> {
                 filter: none !important;
                 opacity: 1 !important;
                 visibility: visible !important;
                 display: revert !important;
-                pointer-events: auto !important;
                 backdrop-filter: none !important;
             }
             <?php endif; ?>

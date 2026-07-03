@@ -3,7 +3,7 @@
  * Plugin Name: Front18 Security Integration
  * Plugin URI:  https://front18.com/wordpress
  * Description: O motor de segurança definitiva (Anti-Flicker) para o SDK Front18. Isola e protege seu conteúdo sensível antes mesmo da página renderizar.
- * Version:     1.1.4
+ * Version:     1.1.5
  * Author:      Front18 Engineering
  * Author URI:  https://front18.com
  * Text Domain: front18
