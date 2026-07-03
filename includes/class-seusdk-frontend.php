@@ -108,16 +108,30 @@ class Front18_Frontend {
         }, explode( ',', $blur_selector ) ) );
 
         if ( empty( $formatted_selectors ) ) {
-            $formatted_selectors = 'html.front18-hide img, html.front18-hide video, html.front18-hide iframe, html.front18-hide .e-con, html.front18-hide .elementor-section, html.front18-hide .wp-block-cover, ' . $locked_tag_selector;
+            $formatted_selectors = 'html.front18-hide img, html.front18-hide video, html.front18-hide iframe, html.front18-hide .e-con, html.front18-hide .elementor-section, ' . $locked_tag_selector;
         } else {
-            $formatted_selectors .= ', ' . $locked_tag_selector . ', html.front18-hide .e-con, html.front18-hide .elementor-section, html.front18-hide .wp-block-cover';
+            $formatted_selectors .= ', ' . $locked_tag_selector . ', html.front18-hide .e-con, html.front18-hide .elementor-section';
         }
 
         if ( ! empty( $protected_ids ) ) {
-            $granular_selectors   = implode( ', ', array_map( function( $id ) {
+            // Camada 1: seletores por classe WordPress (imagens inseridas via editor)
+            $class_selectors = implode( ', ', array_map( function( $id ) {
                 return 'html.front18-hide .wp-image-' . (int) $id . ', html.front18-hide .attachment-' . (int) $id;
             }, $protected_ids ) );
-            $formatted_selectors .= ', ' . $granular_selectors;
+
+            // Camada 2: seletores por src (imagens de tema, widgets, Elementor, carousels)
+            // Usa o resolve_protected_urls para pegar os filenames sem dimensões (ex: foto-scaled ao inves de foto-300x200)
+            $protected_urls  = $this->resolve_protected_urls( $protected_ids );
+            $src_selectors   = '';
+            if ( ! empty( $protected_urls ) ) {
+                $src_selectors = ', ' . implode( ', ', array_map( function( $name ) {
+                    // Escapa aspas e caracteres especiais do CSS
+                    $safe = addslashes( $name );
+                    return 'html.front18-hide img[src*="' . $safe . '"]';
+                }, $protected_urls ) );
+            }
+
+            $formatted_selectors .= ', ' . $class_selectors . $src_selectors;
         }
         ?>
         <!-- FRONT18: ANTI-FLICKER EXTREMO (BLINDADO CONTRA MINIFICAÇÃO) -->
