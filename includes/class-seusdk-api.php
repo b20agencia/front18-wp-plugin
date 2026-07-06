@@ -89,19 +89,23 @@ class Front18_API {
     // =========================================================================
 
     public function check_permission( WP_REST_Request $request ) {
-        $api_key = get_option( 'front18_api_key', '' );
-        if ( empty( $api_key ) ) return false;
+        // Usa o webhook_secret separado (nunca exposto no frontend).
+        // Fallback para api_key em instalações legadas que ainda não receberam o secret via sync.
+        $webhook_secret = get_option( 'front18_webhook_secret', '' );
+        if ( empty( $webhook_secret ) ) {
+            $webhook_secret = get_option( 'front18_api_key', '' );
+        }
+        if ( empty( $webhook_secret ) ) return false;
 
-        // Autorização via header Bearer
+        // Autorização via header Bearer (ÚNICO método aceito).
+        // NOTA SEGURA: o fallback via payload 'api_key' foi removido intencionalmente.
+        // Aceitar a api_key no body permitiria que qualquer pessoa com acesso ao
+        // código-fonte do site (onde a apiKey é pública) autenticasse o webhook.
         $auth_header = $request->get_header( 'authorization' );
         if ( $auth_header && strpos( $auth_header, 'Bearer ' ) === 0 ) {
             $token = substr( $auth_header, 7 );
-            if ( hash_equals( $api_key, $token ) ) return true;
+            if ( hash_equals( $webhook_secret, $token ) ) return true;
         }
-
-        // Autorização via payload JSON (fallback)
-        $body_key = $request->get_param( 'api_key' );
-        if ( ! empty( $body_key ) && hash_equals( $api_key, (string) $body_key ) ) return true;
 
         return false;
     }
@@ -165,18 +169,24 @@ class Front18_API {
         $config_payload = $request->get_param( 'config' );
         if ( is_array( $config_payload ) ) {
             $sanitized_config = array(
-                'level'         => isset( $config_payload['level'] ) ? (int) $config_payload['level'] : 1,
-                'display_mode'  => sanitize_text_field( $config_payload['display_mode'] ?? 'global_lock' ),
-                'color_bg'      => sanitize_hex_color( $config_payload['color_bg'] ?? '#0f172a' ) ?: '#0f172a',
-                'color_primary' => sanitize_hex_color( $config_payload['color_primary'] ?? '#6366f1' ) ?: '#6366f1',
-                'color_text'    => sanitize_hex_color( $config_payload['color_text'] ?? '#f8fafc' ) ?: '#f8fafc',
-                'blur_amount'   => isset( $config_payload['blur_amount'] ) ? (int) $config_payload['blur_amount'] : 25,
-                'blur_selector' => isset( $config_payload['blur_selector'] )
-                                    ? map_deep( wp_unslash( $config_payload['blur_selector'] ), 'sanitize_text_field' )
-                                    : 'img, video, iframe, [data-front18="locked"]',
+                'level'              => isset( $config_payload['level'] ) ? (int) $config_payload['level'] : 1,
+                'display_mode'       => sanitize_text_field( $config_payload['display_mode'] ?? 'global_lock' ),
+                'color_bg'           => sanitize_hex_color( $config_payload['color_bg'] ?? '#0f172a' ) ?: '#0f172a',
+                'color_primary'      => sanitize_hex_color( $config_payload['color_primary'] ?? '#6366f1' ) ?: '#6366f1',
+                'color_text'         => sanitize_hex_color( $config_payload['color_text'] ?? '#f8fafc' ) ?: '#f8fafc',
+                'blur_amount'        => isset( $config_payload['blur_amount'] ) ? (int) $config_payload['blur_amount'] : 25,
+                'blur_selector'      => isset( $config_payload['blur_selector'] )
+                                            ? map_deep( wp_unslash( $config_payload['blur_selector'] ), 'sanitize_text_field' )
+                                            : 'img, video, iframe, [data-front18="locked"]',
+                // FIX: excluded_selectors é campo explícito com sanitize_textarea_field() para preservar
+                // caracteres especiais de seletores CSS: [], ", *, ^, >, : (sanitize_text_field os remove).
+                'excluded_selectors' => isset( $config_payload['excluded_selectors'] )
+                                            ? sanitize_textarea_field( wp_unslash( $config_payload['excluded_selectors'] ) )
+                                            : '',
             );
 
             // Campos extras (módulos estendidos: DPO, Facial, etc.)
+            // Nota: excluded_selectors já está tratado acima — o loop só processa campos desconhecidos.
             foreach ( $config_payload as $key => $value ) {
                 if ( ! isset( $sanitized_config[ $key ] ) ) {
                     if ( is_bool( $value ) ) {
@@ -188,6 +198,14 @@ class Front18_API {
             }
 
             update_option( 'front18_synced_config', $sanitized_config );
+        }
+
+        // Persiste o webhook_secret separado (nunca exposto no frontend).
+        // Só é aceito em payloads autenticados (este endpoint já passou pelo check_permission).
+        // Valida o comprimento mínimo (prefixo 'whs_' + 48 hex = 52 chars) antes de sobrescrever.
+        $webhook_secret_payload = $request->get_param( 'webhook_secret' );
+        if ( ! empty( $webhook_secret_payload ) && is_string( $webhook_secret_payload ) && strlen( $webhook_secret_payload ) >= 20 ) {
+            update_option( 'front18_webhook_secret', sanitize_text_field( $webhook_secret_payload ) );
         }
 
         // IDs de mídias protegidas

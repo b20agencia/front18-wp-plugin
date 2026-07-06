@@ -100,16 +100,51 @@ class Front18_Frontend {
         $blur_selector    = ! empty( $config['blur_selector'] ) ? $config['blur_selector'] : 'img, video, iframe, [data-front18="locked"]';
         $protection_level = isset( $config['level'] )          ? (int) $config['level']        : 1;
 
-        // Seletores excluídos do blur (AdSense, rodapé, etc.)
-        $excluded_selectors_raw = ! empty( $config['excluded_selectors'] )
-            ? $config['excluded_selectors']
-            : 'ins.adsbygoogle, .adsbygoogle, iframe[src*="googlesyndication.com"], iframe[src*="doubleclick.net"], [id^="google_ads"], .google-auto-placed';
+        // Seletores excluídos do blur (AdSense, rodapé, iframes utilitários do Google, etc.)
+        // IMPORTANTE: lista hardcoded garante proteção mesmo que o banco ainda tenha valor corrompido.
+        $adsense_hardcoded = [
+            'ins.adsbygoogle',
+            '.adsbygoogle',
+            'iframe[src*="googlesyndication.com"]',
+            'iframe[src*="doubleclick.net"]',
+            '[id^="google_ads"]',
+            '.google-auto-placed',
+            'iframe[src*="fundingchoicesmessages.google.com"]',
+            'iframe[src*="google.com/recaptcha"]',
+            'iframe[src*="google.com/search"]',
+            'footer iframe',
+            '.site-footer iframe',
+            '.footer iframe',
+            'body > iframe[style*="display:none"]',
+            'body > iframe[style*="display: none"]',
+            'body > iframe[src="about:blank"]',
+            'body > iframe:not([src])',
+            '[id^="aswift_"]',
+            '[id^="google_ads_iframe_"]',
+            '.adsbygoogle-noablate',
+        ];
+
+        // Mescla os seletores do banco (customizados pelo usuário) com os hardcoded do AdSense.
+        // Prioridade: banco > hardcoded. Se o banco estiver vazio/corrompido, usa só os hardcoded.
+        $from_db_raw = ! empty( $config['excluded_selectors'] ) ? $config['excluded_selectors'] : '';
+        $from_db     = array_filter( array_map( 'trim', explode( ',', $from_db_raw ) ) );
+
+        // Adiciona os hardcoded que ainda não estão na lista do banco
+        foreach ( $adsense_hardcoded as $hc ) {
+            $already = false;
+            foreach ( $from_db as $db_sel ) {
+                if ( strcasecmp( trim( $db_sel ), $hc ) === 0 ) { $already = true; break; }
+            }
+            if ( ! $already ) $from_db[] = $hc;
+        }
+
+        $excluded_selectors_raw = implode( ', ', $from_db );
 
         // Formata seletores de exclusão com prefixo html.front18-hide
         $formatted_exclusions = implode( ', ', array_map( function( $sel ) {
             return 'html.front18-hide ' . trim( $sel );
-        }, array_filter( explode( ',', $excluded_selectors_raw ), function( $s ) {
-            return ! empty( trim( $s ) );
+        }, array_filter( array_map( 'trim', explode( ',', $excluded_selectors_raw ) ), function( $s ) {
+            return ! empty( $s );
         } ) ) );
 
         $locked_tag_selector = 'html.front18-hide [data-front18="locked"], html.front18-hide .front18-locked';
@@ -179,6 +214,16 @@ class Front18_Frontend {
                 display: revert !important;
                 pointer-events: auto !important;
                 backdrop-filter: none !important;
+                -webkit-filter: none !important;
+            }
+            /* Iframes ocultos do Google injetados no body (pixel tracking, consent, reCAPTCHA) */
+            html.front18-hide body > iframe,
+            html.front18-hide body > div > iframe[src*="google"],
+            html.front18-hide body > div[id*="google"] > iframe {
+                filter: none !important;
+                opacity: 1 !important;
+                visibility: visible !important;
+                pointer-events: auto !important;
             }
             <?php endif; ?>
             <?php else: ?>
