@@ -127,15 +127,20 @@ class Front18_Frontend {
         // Mescla os seletores do banco (customizados pelo usuário) com os hardcoded do AdSense.
         // Prioridade: banco > hardcoded. Se o banco estiver vazio/corrompido, usa só os hardcoded.
         $from_db_raw = ! empty( $config['excluded_selectors'] ) ? $config['excluded_selectors'] : '';
-        $from_db     = array_filter( array_map( 'trim', explode( ',', $from_db_raw ) ) );
+        // Normaliza whitespace interno dos seletores (ex: "footer  iframe" -> "footer iframe")
+        // para evitar duplicatas ao comparar com a lista hardcoded.
+        $from_db = array_filter( array_map( function( $s ) {
+            return preg_replace( '/\s+/', ' ', trim( $s ) );
+        }, explode( ',', $from_db_raw ) ) );
 
         // Adiciona os hardcoded que ainda não estão na lista do banco
         foreach ( $adsense_hardcoded as $hc ) {
             $already = false;
+            $hc_norm = preg_replace( '/\s+/', ' ', $hc ); // normaliza o hardcoded também
             foreach ( $from_db as $db_sel ) {
-                if ( strcasecmp( trim( $db_sel ), $hc ) === 0 ) { $already = true; break; }
+                if ( strcasecmp( $db_sel, $hc_norm ) === 0 ) { $already = true; break; }
             }
-            if ( ! $already ) $from_db[] = $hc;
+            if ( ! $already ) $from_db[] = $hc_norm;
         }
 
         $excluded_selectors_raw = implode( ', ', $from_db );
@@ -216,10 +221,18 @@ class Front18_Frontend {
                 backdrop-filter: none !important;
                 -webkit-filter: none !important;
             }
-            /* Iframes ocultos do Google injetados no body (pixel tracking, consent, reCAPTCHA) */
-            html.front18-hide body > iframe,
-            html.front18-hide body > div > iframe[src*="google"],
-            html.front18-hide body > div[id*="google"] > iframe {
+            /* Iframes ocultos do Google injetados no body: consent, tracking, reCAPTCHA.
+               NOTA: Não usa 'body > iframe' genérico para não liberar iframes de vídeo/paywall. */
+            html.front18-hide body > iframe[src*="google"],
+            html.front18-hide body > iframe[src*="googlesyndication"],
+            html.front18-hide body > iframe[src*="doubleclick"],
+            html.front18-hide body > iframe[src*="fundingchoicesmessages"],
+            html.front18-hide body > iframe[src="about:blank"][style*="display:none"],
+            html.front18-hide body > iframe[src="about:blank"][style*="display: none"],
+            html.front18-hide body > iframe:not([src])[style*="display:none"],
+            html.front18-hide body > iframe:not([src])[style*="display: none"],
+            html.front18-hide body > div[id*="google"] > iframe,
+            html.front18-hide body > div[class*="google"] > iframe {
                 filter: none !important;
                 opacity: 1 !important;
                 visibility: visible !important;
@@ -247,6 +260,23 @@ class Front18_Frontend {
                 visibility: visible !important;
                 display: revert !important;
                 backdrop-filter: none !important;
+                -webkit-filter: none !important;
+            }
+            /* Iframes ocultos do Google no body (consent, tracking) — também no modo global_lock */
+            html.front18-hide body > iframe[src*="google"],
+            html.front18-hide body > iframe[src*="googlesyndication"],
+            html.front18-hide body > iframe[src*="doubleclick"],
+            html.front18-hide body > iframe[src*="fundingchoicesmessages"],
+            html.front18-hide body > iframe[src="about:blank"][style*="display:none"],
+            html.front18-hide body > iframe[src="about:blank"][style*="display: none"],
+            html.front18-hide body > iframe:not([src])[style*="display:none"],
+            html.front18-hide body > iframe:not([src])[style*="display: none"],
+            html.front18-hide body > div[id*="google"] > iframe,
+            html.front18-hide body > div[class*="google"] > iframe {
+                filter: none !important;
+                opacity: 1 !important;
+                visibility: visible !important;
+                pointer-events: auto !important;
             }
             <?php endif; ?>
         </style>
