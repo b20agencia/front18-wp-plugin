@@ -356,6 +356,7 @@ class Front18_Frontend {
                     level: <?php echo isset( $config['level'] ) ? (int) $config['level'] : 1; ?>,
                     blur_amount: <?php echo (int) $blur_amount; ?>,
                     blur_selector: '<?php echo esc_js( $blur_selector ); ?>',
+                    excluded_selectors: '<?php echo esc_js( ! empty( $config['excluded_selectors'] ) ? $config['excluded_selectors'] : 'ins.adsbygoogle, .adsbygoogle, iframe[src*="googlesyndication.com"], iframe[src*="doubleclick.net"], [id^="google_ads"], .google-auto-placed, footer iframe, .site-footer iframe, .footer iframe, [id^="aswift_"], [id^="google_ads_iframe_"], .adsbygoogle-noablate' ); ?>',
                     theme: {
                         bg: '<?php echo esc_js( $color_bg ); ?>',
                         primary: '<?php echo esc_js( $color_primary ); ?>',
@@ -377,7 +378,7 @@ class Front18_Frontend {
 
                 <?php
                 // Campos extras (módulos estendidos: DPO, Facial, etc.)
-                $known_keys   = array( 'level', 'display_mode', 'color_bg', 'color_primary', 'color_text', 'blur_amount', 'blur_selector' );
+                $known_keys   = array( 'level', 'display_mode', 'color_bg', 'color_primary', 'color_text', 'blur_amount', 'blur_selector', 'excluded_selectors', 'protected_media_ids' );
                 $extra_config = array();
                 if ( is_array( $config ) ) {
                     foreach ( $config as $k => $v ) {
