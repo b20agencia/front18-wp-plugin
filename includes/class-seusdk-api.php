@@ -183,6 +183,11 @@ class Front18_API {
                 'excluded_selectors' => isset( $config_payload['excluded_selectors'] )
                                             ? sanitize_textarea_field( wp_unslash( $config_payload['excluded_selectors'] ) )
                                             : '',
+                // 'all' = borra toda midia; 'selected_only' = so a lista de protected_ids.
+                // Valor desconhecido cai em 'all': falhar para o lado protegido.
+                'protection_scope'   => ( isset( $config_payload['protection_scope'] ) && $config_payload['protection_scope'] === 'selected_only' )
+                                            ? 'selected_only'
+                                            : 'all',
             );
 
             // Campos extras (módulos estendidos: DPO, Facial, etc.)

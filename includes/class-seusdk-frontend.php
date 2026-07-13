@@ -71,6 +71,20 @@ class Front18_Frontend {
     }
 
     /**
+     * Escopo da proteção: 'all' (toda mídia) ou 'selected_only' (whitelist da matriz).
+     *
+     * Qualquer valor desconhecido cai em 'all' — na dúvida, protege.
+     *
+     * @return string
+     */
+    private function get_protection_scope() {
+        $config = $this->get_synced_config();
+        return ( ! empty( $config['protection_scope'] ) && $config['protection_scope'] === 'selected_only' )
+            ? 'selected_only'
+            : 'all';
+    }
+
+    /**
      * Lista única de seletores excluídos do blur (AdSense, rodapé, iframes utilitários do Google).
      *
      * Fonte de verdade compartilhada entre o CSS anti-flicker e o Front18Config do JS. Antes cada
@@ -177,15 +191,24 @@ class Front18_Frontend {
 
         $locked_tag_selector = 'html.front18-hide [data-front18="locked"], html.front18-hide .front18-locked';
 
-        // Arquitetura híbrida: seletor genérico + granularidade
-        $formatted_selectors = implode( ', ', array_map( function( $sel ) {
-            return 'html.front18-hide ' . trim( $sel );
-        }, explode( ',', $blur_selector ) ) );
+        // No modo whitelist o CSS anti-flicker NAO pode emitir "html.front18-hide img { blur }":
+        // ele borraria o site inteiro antes de o SDK sequer rodar, anulando a selecao. Aqui so
+        // entram os seletores granulares (.wp-image-ID e img[src*="nome"], montados logo abaixo).
+        $selected_only = ( $this->get_protection_scope() === 'selected_only' );
 
-        if ( empty( $formatted_selectors ) ) {
-            $formatted_selectors = 'html.front18-hide img, html.front18-hide video, html.front18-hide iframe, html.front18-hide .e-con, html.front18-hide .elementor-section, ' . $locked_tag_selector;
+        if ( $selected_only ) {
+            $formatted_selectors = $locked_tag_selector;
         } else {
-            $formatted_selectors .= ', ' . $locked_tag_selector . ', html.front18-hide .e-con, html.front18-hide .elementor-section';
+            // Arquitetura híbrida: seletor genérico + granularidade
+            $formatted_selectors = implode( ', ', array_map( function( $sel ) {
+                return 'html.front18-hide ' . trim( $sel );
+            }, explode( ',', $blur_selector ) ) );
+
+            if ( empty( $formatted_selectors ) ) {
+                $formatted_selectors = 'html.front18-hide img, html.front18-hide video, html.front18-hide iframe, html.front18-hide .e-con, html.front18-hide .elementor-section, ' . $locked_tag_selector;
+            } else {
+                $formatted_selectors .= ', ' . $locked_tag_selector . ', html.front18-hide .e-con, html.front18-hide .elementor-section';
+            }
         }
 
         if ( ! empty( $protected_ids ) ) {
@@ -384,6 +407,7 @@ class Front18_Frontend {
                     // fariam closest() lançar SyntaxError, derrubando a protecao inteira.
                     blur_selector: <?php echo wp_json_encode( $blur_selector ); ?>,
                     excluded_selectors: <?php echo wp_json_encode( $this->get_excluded_selectors() ); ?>,
+                    protection_scope: <?php echo wp_json_encode( $this->get_protection_scope() ); ?>,
                     theme: {
                         bg: '<?php echo esc_js( $color_bg ); ?>',
                         primary: '<?php echo esc_js( $color_primary ); ?>',
@@ -405,7 +429,7 @@ class Front18_Frontend {
 
                 <?php
                 // Campos extras (módulos estendidos: DPO, Facial, etc.)
-                $known_keys   = array( 'level', 'display_mode', 'color_bg', 'color_primary', 'color_text', 'blur_amount', 'blur_selector', 'excluded_selectors', 'protected_media_ids' );
+                $known_keys   = array( 'level', 'display_mode', 'color_bg', 'color_primary', 'color_text', 'blur_amount', 'blur_selector', 'excluded_selectors', 'protection_scope', 'protected_media_ids' );
                 $extra_config = array();
                 if ( is_array( $config ) ) {
                     foreach ( $config as $k => $v ) {
@@ -581,6 +605,15 @@ class Front18_Frontend {
                 $name_only  = pathinfo( $filename, PATHINFO_FILENAME );
                 $base_name  = preg_replace( '/-[0-9]+x[0-9]+$/', '', $name_only );
                 $protected_urls[] = $base_name;
+
+                // O WP renomeia TODO upload acima de 2560px para "foto-scaled.jpg", mas os
+                // derivados que ele injeta no HTML se chamam "foto-1024x683.jpg" — sem o -scaled.
+                // Enviando so "foto-scaled", o casamento por nome nunca dispara justamente na foto
+                // grande, que e a que o cliente mais quer proteger. Enviamos as duas formas.
+                $sem_scaled = preg_replace( '/-scaled$/', '', $base_name );
+                if ( $sem_scaled !== $base_name ) {
+                    $protected_urls[] = $sem_scaled;
+                }
             }
         }
 
