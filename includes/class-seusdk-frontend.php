@@ -408,6 +408,7 @@ class Front18_Frontend {
                     blur_selector: <?php echo wp_json_encode( $blur_selector ); ?>,
                     excluded_selectors: <?php echo wp_json_encode( $this->get_excluded_selectors() ); ?>,
                     protection_scope: <?php echo wp_json_encode( $this->get_protection_scope() ); ?>,
+                    protected_zones: <?php echo wp_json_encode( ( isset( $config['protected_zones'] ) && is_array( $config['protected_zones'] ) ) ? $config['protected_zones'] : array() ); ?>,
                     theme: {
                         bg: '<?php echo esc_js( $color_bg ); ?>',
                         primary: '<?php echo esc_js( $color_primary ); ?>',
@@ -429,7 +430,7 @@ class Front18_Frontend {
 
                 <?php
                 // Campos extras (módulos estendidos: DPO, Facial, etc.)
-                $known_keys   = array( 'level', 'display_mode', 'color_bg', 'color_primary', 'color_text', 'blur_amount', 'blur_selector', 'excluded_selectors', 'protection_scope', 'protected_media_ids' );
+                $known_keys   = array( 'level', 'display_mode', 'color_bg', 'color_primary', 'color_text', 'blur_amount', 'blur_selector', 'excluded_selectors', 'protection_scope', 'protected_zones', 'protected_media_ids' );
                 $extra_config = array();
                 if ( is_array( $config ) ) {
                     foreach ( $config as $k => $v ) {

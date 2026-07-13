@@ -188,6 +188,14 @@ class Front18_API {
                 'protection_scope'   => ( isset( $config_payload['protection_scope'] ) && $config_payload['protection_scope'] === 'selected_only' )
                                             ? 'selected_only'
                                             : 'all',
+                // Chaves de regiao ('hero', 'cards'...). Lista vazia = sem restricao de regiao.
+                // Os seletores CSS de cada zona vivem no SDK — aqui so trafegam as chaves.
+                'protected_zones'    => ( isset( $config_payload['protected_zones'] ) && is_array( $config_payload['protected_zones'] ) )
+                                            ? array_values( array_intersect(
+                                                array( 'hero', 'conteudo', 'cards', 'sidebar', 'cabecalho', 'rodape', 'comentarios' ),
+                                                array_map( 'sanitize_key', $config_payload['protected_zones'] )
+                                              ) )
+                                            : array(),
             );
 
             // Campos extras (módulos estendidos: DPO, Facial, etc.)
