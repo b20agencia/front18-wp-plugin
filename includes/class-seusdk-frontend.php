@@ -28,6 +28,8 @@ class Front18_Frontend {
     /** @var array */
     private $protected_media = null;
 
+    private $excluded_selectors = null;
+
     // =========================================================================
     // Inicialização
     // =========================================================================
@@ -68,6 +70,70 @@ class Front18_Frontend {
         return $this->protected_media;
     }
 
+    /**
+     * Lista única de seletores excluídos do blur (AdSense, rodapé, iframes utilitários do Google).
+     *
+     * Fonte de verdade compartilhada entre o CSS anti-flicker e o Front18Config do JS. Antes cada
+     * um montava a sua própria lista, e a do JS não mesclava os hardcoded — um valor parcial no
+     * banco anulava silenciosamente a blindagem anti-AdSense só no lado JS.
+     *
+     * @return string CSV de seletores CSS, com aspas duplas intactas.
+     */
+    private function get_excluded_selectors() {
+        if ( $this->excluded_selectors !== null ) {
+            return $this->excluded_selectors;
+        }
+
+        $config = $this->get_synced_config();
+
+        $adsense_hardcoded = array(
+            'ins.adsbygoogle',
+            '.adsbygoogle',
+            'iframe[src*="googlesyndication.com"]',
+            'iframe[src*="doubleclick.net"]',
+            '[id^="google_ads"]',
+            '.google-auto-placed',
+            'iframe[src*="fundingchoicesmessages.google.com"]',
+            'iframe[src*="google.com/recaptcha"]',
+            'iframe[src*="google.com/search"]',
+            'footer iframe',
+            '.site-footer iframe',
+            '.footer iframe',
+            'body > iframe[style*="display:none"]',
+            'body > iframe[style*="display: none"]',
+            'body > iframe[src="about:blank"]',
+            'body > iframe:not([src])',
+            '[id^="aswift_"]',
+            '[id^="google_ads_iframe_"]',
+            '.adsbygoogle-noablate',
+        );
+
+        $from_db_raw = ! empty( $config['excluded_selectors'] ) ? $config['excluded_selectors'] : '';
+
+        // Normaliza whitespace interno ("footer  iframe" -> "footer iframe") para não duplicar
+        // um seletor que já existe na lista hardcoded.
+        $selectors = array_filter( array_map( function ( $s ) {
+            return preg_replace( '/\s+/', ' ', trim( $s ) );
+        }, explode( ',', $from_db_raw ) ) );
+
+        foreach ( $adsense_hardcoded as $hc ) {
+            $hc_norm = preg_replace( '/\s+/', ' ', $hc );
+            $already = false;
+            foreach ( $selectors as $existing ) {
+                if ( strcasecmp( $existing, $hc_norm ) === 0 ) {
+                    $already = true;
+                    break;
+                }
+            }
+            if ( ! $already ) {
+                $selectors[] = $hc_norm;
+            }
+        }
+
+        $this->excluded_selectors = implode( ', ', $selectors );
+        return $this->excluded_selectors;
+    }
+
     // =========================================================================
     // Anti-Flicker & Injeção HTML
     // =========================================================================
@@ -100,50 +166,7 @@ class Front18_Frontend {
         $blur_selector    = ! empty( $config['blur_selector'] ) ? $config['blur_selector'] : 'img, video, iframe, [data-front18="locked"]';
         $protection_level = isset( $config['level'] )          ? (int) $config['level']        : 1;
 
-        // Seletores excluídos do blur (AdSense, rodapé, iframes utilitários do Google, etc.)
-        // IMPORTANTE: lista hardcoded garante proteção mesmo que o banco ainda tenha valor corrompido.
-        $adsense_hardcoded = [
-            'ins.adsbygoogle',
-            '.adsbygoogle',
-            'iframe[src*="googlesyndication.com"]',
-            'iframe[src*="doubleclick.net"]',
-            '[id^="google_ads"]',
-            '.google-auto-placed',
-            'iframe[src*="fundingchoicesmessages.google.com"]',
-            'iframe[src*="google.com/recaptcha"]',
-            'iframe[src*="google.com/search"]',
-            'footer iframe',
-            '.site-footer iframe',
-            '.footer iframe',
-            'body > iframe[style*="display:none"]',
-            'body > iframe[style*="display: none"]',
-            'body > iframe[src="about:blank"]',
-            'body > iframe:not([src])',
-            '[id^="aswift_"]',
-            '[id^="google_ads_iframe_"]',
-            '.adsbygoogle-noablate',
-        ];
-
-        // Mescla os seletores do banco (customizados pelo usuário) com os hardcoded do AdSense.
-        // Prioridade: banco > hardcoded. Se o banco estiver vazio/corrompido, usa só os hardcoded.
-        $from_db_raw = ! empty( $config['excluded_selectors'] ) ? $config['excluded_selectors'] : '';
-        // Normaliza whitespace interno dos seletores (ex: "footer  iframe" -> "footer iframe")
-        // para evitar duplicatas ao comparar com a lista hardcoded.
-        $from_db = array_filter( array_map( function( $s ) {
-            return preg_replace( '/\s+/', ' ', trim( $s ) );
-        }, explode( ',', $from_db_raw ) ) );
-
-        // Adiciona os hardcoded que ainda não estão na lista do banco
-        foreach ( $adsense_hardcoded as $hc ) {
-            $already = false;
-            $hc_norm = preg_replace( '/\s+/', ' ', $hc ); // normaliza o hardcoded também
-            foreach ( $from_db as $db_sel ) {
-                if ( strcasecmp( $db_sel, $hc_norm ) === 0 ) { $already = true; break; }
-            }
-            if ( ! $already ) $from_db[] = $hc_norm;
-        }
-
-        $excluded_selectors_raw = implode( ', ', $from_db );
+        $excluded_selectors_raw = $this->get_excluded_selectors();
 
         // Formata seletores de exclusão com prefixo html.front18-hide
         $formatted_exclusions = implode( ', ', array_map( function( $sel ) {
@@ -355,8 +378,12 @@ class Front18_Frontend {
                     mode: '<?php echo esc_js( $display_mode ); ?>',
                     level: <?php echo isset( $config['level'] ) ? (int) $config['level'] : 1; ?>,
                     blur_amount: <?php echo (int) $blur_amount; ?>,
-                    blur_selector: '<?php echo esc_js( $blur_selector ); ?>',
-                    excluded_selectors: '<?php echo esc_js( ! empty( $config['excluded_selectors'] ) ? $config['excluded_selectors'] : 'ins.adsbygoogle, .adsbygoogle, iframe[src*="googlesyndication.com"], iframe[src*="doubleclick.net"], [id^="google_ads"], .google-auto-placed, footer iframe, .site-footer iframe, .footer iframe, [id^="aswift_"], [id^="google_ads_iframe_"], .adsbygoogle-noablate' ); ?>',
+                    // wp_json_encode e NAO esc_js: esc_js converte " em &quot;, e dentro de <script>
+                    // o parser HTML nao decodifica entidades — os seletores de atributo
+                    // (iframe[src*="..."], [id^="aswift_"]) chegariam ao SDK como CSS invalido e
+                    // fariam closest() lançar SyntaxError, derrubando a protecao inteira.
+                    blur_selector: <?php echo wp_json_encode( $blur_selector ); ?>,
+                    excluded_selectors: <?php echo wp_json_encode( $this->get_excluded_selectors() ); ?>,
                     theme: {
                         bg: '<?php echo esc_js( $color_bg ); ?>',
                         primary: '<?php echo esc_js( $color_primary ); ?>',
