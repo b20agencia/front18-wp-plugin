@@ -263,6 +263,42 @@ class Front18_API {
         // Constrói o array de tipos MIME aceitos
         $mime_types = $this->resolve_mime_types( $mime_raw );
 
+        // MODO "SO IDS": devolve os IDs de TODAS as midias que casam com os filtros, sem
+        // paginacao e sem thumbnails (fields=ids). O painel usa isto no "Selecionar Todas"
+        // para marcar toda a biblioteca — antes o "Todas" so marcava a pagina visivel, o que
+        // deixava a whitelist (modo "proteger so o selecionado") incompleta.
+        // Nota: filtros por dimensao nao se aplicam aqui (exigem meta por item).
+        if ( rest_sanitize_boolean( $request->get_param( 'ids_only' ) ) ) {
+            $id_args = array(
+                'post_type'      => 'attachment',
+                'post_mime_type' => $mime_types,
+                'post_status'    => 'inherit',
+                'posts_per_page' => -1,
+                'fields'         => 'ids',
+                'no_found_rows'  => true,
+                'suppress_filters' => true,
+            );
+            if ( ! empty( $search ) ) {
+                $id_args['s'] = $search;
+            }
+            if ( ! empty( $folder ) && $folder !== 'all' ) {
+                $fparts = explode( '/', $folder );
+                if ( count( $fparts ) === 2 ) {
+                    $id_args['year']     = (int) $fparts[0];
+                    $id_args['monthnum'] = (int) $fparts[1];
+                }
+            }
+            $all_ids = get_posts( $id_args );
+            $all_ids = array_values( array_unique( array_map( 'intval', (array) $all_ids ) ) );
+
+            return rest_ensure_response( array(
+                'success'     => true,
+                'ids_only'    => true,
+                'all_ids'     => $all_ids,
+                'total_items' => count( $all_ids ),
+            ) );
+        }
+
         $args = array(
             'post_type'      => 'attachment',
             'post_mime_type' => $mime_types,
