@@ -241,13 +241,13 @@ class Front18_Admin {
         // Status Badge Logic
         if ( $enabled && !empty($api_key) ) {
             $badge_class = 'badge-on';
-            $badge_text = __( '🟢 Front18 Ativo e Protegendo este site', 'front18' );
+            $badge_text = __( 'Front18 Ativo e Protegendo este site', 'front18' );
         } elseif ( $enabled && empty($api_key) ) {
             $badge_class = 'badge-err';
-            $badge_text = __( '🔴 API Key Ausente! Proteção interrompida', 'front18' );
+            $badge_text = __( 'API Key Ausente! Proteção interrompida', 'front18' );
         } else {
             $badge_class = 'badge-off';
-            $badge_text = __( '⚪ Front18 Desativado', 'front18' );
+            $badge_text = __( 'Front18 Desativado', 'front18' );
         }
 
         ?>
@@ -313,14 +313,14 @@ class Front18_Admin {
                             <div class="front18-row-title" style="color:#f8fafc;"><?php esc_html_e( 'Status da Sincronização', 'front18' ); ?></div>
                             <div class="front18-row-desc" id="front18_sync_status">
                                 <?php if ($last_sync): ?>
-                                    <span style="color:#34d399;">✔️ Última sincronização: <b id="front18_sync_time"><?php echo esc_html(wp_date('d/m/Y H:i:s', strtotime($last_sync))); ?></b></span>
+                                    <span style="color:#34d399;">Última sincronização: <b id="front18_sync_time"><?php echo esc_html(wp_date('d/m/Y H:i:s', strtotime($last_sync))); ?></b></span>
                                 <?php else: ?>
-                                    <span style="color:#fbbf24;">⚠️ Aguardando primeira sincronização com a sua API Key.</span>
+                                    <span style="color:#fbbf24;">Aguardando primeira sincronização com a sua API Key.</span>
                                 <?php endif; ?>
                             </div>
                         </div>
                         <button type="button" id="front18_btn_sync" class="front18-btn-submit" style="padding: 10px 20px; font-size: 13px; background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(52, 211, 153, 0.3); color: #34d399; box-shadow: none;">
-                            <?php esc_html_e( '🔄 Sincronizar Agora', 'front18' ); ?>
+                            <?php esc_html_e( 'Sincronizar Agora', 'front18' ); ?>
                         </button>
                     </div>
                 </div>
@@ -374,7 +374,7 @@ class Front18_Admin {
 
                 <!-- 4. SHORTCODES -->
                 <details class="front18-debug-details">
-                    <summary><?php esc_html_e( '📋 Como proteger partes específicas da página (Shortcodes)', 'front18' ); ?></summary>
+                    <summary><?php esc_html_e( 'Como proteger partes específicas da página (Shortcodes)', 'front18' ); ?></summary>
                     <div class="front18-card" style="margin-top: 15px;">
                         <p class="card-desc" style="margin-bottom: 20px; line-height: 1.7;">
                             <?php esc_html_e( 'Por padrão, o Front18 protege a página inteira quando ativado. Mas às vezes você quer proteger apenas um bloco — uma foto, um vídeo, uma seção de conteúdo premium. Para isso, use os recursos abaixo diretamente no editor de páginas.', 'front18' ); ?>
@@ -417,11 +417,11 @@ class Front18_Admin {
 
                 <!-- 5. CONFIGURAÇÕES AVANÇADAS -->
                 <details class="front18-debug-details">
-                    <summary><?php esc_html_e( '⚙️ Configurações Avançadas (não altere sem orientação da Front18)', 'front18' ); ?></summary>
+                    <summary><?php esc_html_e( 'Configurações Avançadas (não altere sem orientação da Front18)', 'front18' ); ?></summary>
                     <div class="front18-card" style="margin-top: 15px;">
 
                         <p class="card-desc" style="margin-bottom: 20px; line-height: 1.7; color: #fbbf24;">
-                            ⚠️ <?php esc_html_e( 'Estes campos são preenchidos automaticamente durante a ativação. Só altere se a equipe Front18 solicitar, ou se você estiver usando um ambiente de staging/homologação com URL diferente.', 'front18' ); ?>
+                            <?php esc_html_e( 'Estes campos são preenchidos automaticamente durante a ativação. Só altere se a equipe Front18 solicitar, ou se você estiver usando um ambiente de staging/homologação com URL diferente.', 'front18' ); ?>
                         </p>
 
                         <div class="front18-row" style="flex-direction: column; align-items: stretch; gap: 8px;">
@@ -462,7 +462,7 @@ class Front18_Admin {
                                 </div>
                                 <div class="front18-row-desc">
                                     <?php esc_html_e( 'Quando ativo, o Front18 exibe mensagens detalhadas no Console do navegador (F12 → Aba Console). Use apenas para diagnosticar problemas — nunca deixe ligado em produção, pois expõe informações internas do SDK.', 'front18' ); ?>
-                                    <br><span style="color:#f87171; font-size:11px; margin-top:4px; display:block;">🚫 <?php esc_html_e( 'Desligue após o diagnóstico.', 'front18' ); ?></span>
+                                    <br><span style="color:#f87171; font-size:11px; margin-top:4px; display:block;"><?php esc_html_e( 'Desligue após o diagnóstico.', 'front18' ); ?></span>
                                 </div>
                             </div>
                             <label class="front18-switch">
@@ -488,21 +488,21 @@ class Front18_Admin {
                 $('#front18_btn_sync').on('click', function(e) {
                     e.preventDefault();
                     var $btn = $(this);
-                    $btn.html('⏳ Sincronizando...').css('opacity', '0.7');
+                    $btn.html('Sincronizando...').css('opacity', '0.7');
                     
                     $.post(front18_ajax.ajaxurl, {
                         action: 'front18_sync_now',
                         security: front18_ajax.nonce
                     }, function(res) {
                         if (res.success) {
-                            $('#front18_sync_status').html('<span style="color:#34d399;">✔️ ' + res.data.message + ' <b id="front18_sync_time">' + res.data.time + '</b></span>');
+                            $('#front18_sync_status').html('<span style="color:#34d399;">' + res.data.message + ' <b id="front18_sync_time">' + res.data.time + '</b></span>');
                         } else {
-                            $('#front18_sync_status').html('<span style="color:#ef4444;">❌ ' + res.data.message + '</span>');
+                            $('#front18_sync_status').html('<span style="color:#ef4444;">' + res.data.message + '</span>');
                         }
                     }).fail(function() {
-                        $('#front18_sync_status').html('<span style="color:#ef4444;">❌ Erro de rede ao contatar a API.</span>');
+                        $('#front18_sync_status').html('<span style="color:#ef4444;">Erro de rede ao contatar a API.</span>');
                     }).always(function() {
-                        $btn.html('🔄 Sincronizar Agora').css('opacity', '1');
+                        $btn.html('Sincronizar Agora').css('opacity', '1');
                     });
                 });
 
@@ -530,7 +530,7 @@ class Front18_Admin {
     public function add_post_meta_boxes() {
         $post_types = get_post_types( array( 'public' => true ) );
         foreach ( $post_types as $pt ) {
-            add_meta_box( 'front18_meta_box', __( '🛡️ Defesa Front18', 'front18' ), array( $this, 'render_meta_box' ), $pt, 'side', 'high' );
+            add_meta_box( 'front18_meta_box', __( 'Defesa Front18', 'front18' ), array( $this, 'render_meta_box' ), $pt, 'side', 'high' );
         }
     }
 
@@ -546,20 +546,20 @@ class Front18_Admin {
         $is_global    = ! empty( $synced_rules['global'] );
 
         if ( ! $enabled || empty( $api_key ) ) {
-            $status_html = '<span style="color:#94a3b8;">⚪ ' . esc_html__( 'Front18 desativado', 'front18' ) . '</span>';
+            $status_html = '<span style="color:#94a3b8;">' . esc_html__( 'Front18 desativado', 'front18' ) . '</span>';
         } elseif ( $val === 'protect' ) {
-            $status_html = '<span style="color:#f87171;">🔴 ' . esc_html__( 'Forçado como PROTEGIDO', 'front18' ) . '</span>';
+            $status_html = '<span style="color:#f87171;">' . esc_html__( 'Forçado como PROTEGIDO', 'front18' ) . '</span>';
         } elseif ( $val === 'unprotect' ) {
-            $status_html = '<span style="color:#34d399;">🟢 ' . esc_html__( 'Forçado como LIVRE', 'front18' ) . '</span>';
+            $status_html = '<span style="color:#34d399;">' . esc_html__( 'Forçado como LIVRE', 'front18' ) . '</span>';
         } elseif ( $is_global ) {
-            $status_html = '<span style="color:#f87171;">🔴 ' . esc_html__( 'Protegido (Regra Global ativa)', 'front18' ) . '</span>';
+            $status_html = '<span style="color:#f87171;">' . esc_html__( 'Protegido (Regra Global ativa)', 'front18' ) . '</span>';
         } else {
             $post_type    = get_post_type( $post->ID );
             $cpts         = isset( $synced_rules['cpts'] ) && is_array( $synced_rules['cpts'] ) ? $synced_rules['cpts'] : array();
             if ( $post_type && in_array( $post_type, $cpts, true ) ) {
-                $status_html = '<span style="color:#f87171;">🔴 ' . esc_html__( 'Protegido (Regra de CPT ativa)', 'front18' ) . '</span>';
+                $status_html = '<span style="color:#f87171;">' . esc_html__( 'Protegido (Regra de CPT ativa)', 'front18' ) . '</span>';
             } else {
-                $status_html = '<span style="color:#34d399;">🟢 ' . esc_html__( 'Não protegido pelas regras atuais', 'front18' ) . '</span>';
+                $status_html = '<span style="color:#34d399;">' . esc_html__( 'Não protegido pelas regras atuais', 'front18' ) . '</span>';
             }
         }
         ?>
@@ -567,8 +567,8 @@ class Front18_Admin {
         <p style="font-size:13px; color:#64748b; margin-top:0;"><?php esc_html_e( 'Deseja forçar uma regra específica unicamente para esta página?', 'front18' ); ?></p>
         <select name="front18_protect_override" style="width:100%; margin-bottom: 10px;">
             <option value="default"    <?php selected( $val, 'default' ); ?>><?php esc_html_e( 'Automático (Seguir Painel Principal)', 'front18' ); ?></option>
-            <option value="protect"    <?php selected( $val, 'protect' ); ?>><?php esc_html_e( '🔴 Forçar Proteção (Bloquear Sempre)', 'front18' ); ?></option>
-            <option value="unprotect"  <?php selected( $val, 'unprotect' ); ?>><?php esc_html_e( '🟢 Forçar Acesso (Liberar Sempre)', 'front18' ); ?></option>
+            <option value="protect"    <?php selected( $val, 'protect' ); ?>><?php esc_html_e( 'Forçar Proteção (Bloquear Sempre)', 'front18' ); ?></option>
+            <option value="unprotect"  <?php selected( $val, 'unprotect' ); ?>><?php esc_html_e( 'Forçar Acesso (Liberar Sempre)', 'front18' ); ?></option>
         </select>
         <?php
     }

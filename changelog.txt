@@ -1,5 +1,22 @@
 === Front18 Security Integration Changelog ===
 
+= 1.2.0 =
+* SEGURANCA: a api_key deixa de poder alterar as regras de protecao. Ela e publica — sai
+  impressa no HTML de toda pagina protegida, porque o SDK precisa dela — e o check_permission
+  a aceitava como Bearer enquanto o webhook_secret nao chegasse. Nessa janela, qualquer pessoa
+  que lesse o codigo-fonte do site podia chamar /sync e (a) zerar as regras, desligando o gate
+  de idade, e (b) gravar um webhook_secret proprio, tomando o canal de configuracao de forma
+  permanente. O modo bootstrap continua existindo, senao o primeiro sync nunca chegaria, mas
+  agora aceita EXCLUSIVAMENTE a entrega do webhook_secret e ignora qualquer regra no mesmo
+  payload. O SaaS reenvia a sincronizacao com o segredo logo em seguida.
+* Correcao de release: o update.json apontava 1.1.8 enquanto o plugin ja era 1.1.9. O
+  auto-update nunca oferecia a versao corrente. As tres fontes de versao (cabecalho do plugin,
+  constante FRONT18_VERSION e manifesto) passam a ser conferidas por teste.
+* UX: emojis removidos do painel e da documentacao. Os indicadores de status continuam
+  legiveis — a cor ja carregava o mesmo significado.
+* Testes: nova suite (tests/wp/ no repositorio do SaaS) com 25 verificacoes sobre autenticacao
+  do canal, bootstrap, sanitizacao do payload de sync e o que o /ping publico expoe.
+
 = 1.1.2 =
 * Feature: novo endpoint público GET /wp-json/front18/v1/ping — health-check para o SaaS confirmar que o plugin está instalado e ativo.
 * O /ping retorna: version, status (ok / degraded / disabled), enabled, synced e last_sync.

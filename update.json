@@ -1,13 +1,13 @@
 {
   "name": "Front18 WP Plugin",
   "slug": "front18-wp-plugin",
-  "version": "1.1.8",
+  "version": "1.2.0",
   "author": "B20 Agência",
-  "download_url": "https://github.com/b20agencia/front18-wp-plugin/releases/download/v1.1.8/front18-wp-plugin.zip",
+  "download_url": "https://github.com/b20agencia/front18-wp-plugin/releases/download/v1.2.0/front18-wp-plugin.zip",
   "requires": "6.0",
   "tested": "6.7",
   "requires_php": "7.4",
-  "last_updated": "2026-07-06",
+  "last_updated": "2026-08-21 00:00:00",
   "homepage": "https://github.com/b20agencia/front18-wp-plugin",
   "sections": {
     "description": "Integração Front18 com WordPress.",
