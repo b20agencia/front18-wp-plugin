@@ -5,7 +5,7 @@ if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
 }
 
 /**
- * 🧹 Rotina Automática de Limpeza de Produto (Nível SaaS)
+ * Rotina Automática de Limpeza de Produto (Nível SaaS)
  * Protege o banco de dados do cliente (wp_options e wp_postmeta)
  * caso ele decida remover o plugin por definitivo no painel administrativo do WordPress.
  *

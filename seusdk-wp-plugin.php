@@ -43,7 +43,7 @@ if ( file_exists( $puc_path ) ) {
 // ==============================================================================
 
 /**
- * 🚀 Rotina Executável de Instalação (Activation Hook Nível Produto SaaS)
+ * Rotina Executável de Instalação (Activation Hook Nível Produto SaaS)
  * Protege o banco de dados do cliente de quebras por Syntax Error caso usem versões antigas.
  */
 function front18_activate_plugin() {
@@ -78,7 +78,7 @@ register_activation_hook( __FILE__, 'front18_activate_plugin' );
 
 
 /**
- * 🔻 Rotina Não-Destrutiva de Desativação
+ * Rotina Não-Destrutiva de Desativação
  * Útil para limpar agendamentos (Cron), reescrever regras de cache temporárias ou flush_rewrite_rules
  */
 function front18_deactivate_plugin() {
