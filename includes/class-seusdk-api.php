@@ -88,12 +88,37 @@ class Front18_API {
     // 2. Verificação de Permissão (com hash_equals para prevenir timing attacks)
     // =========================================================================
 
+    /**
+     * O pedido autenticou apenas com a api_key (modo bootstrap), e não com o webhook_secret?
+     *
+     * Fica registrado para o handler do /sync saber que NÃO pode confiar neste pedido para
+     * mudar proteção — só para receber o segredo definitivo. Ver handle_webhook().
+     */
+    private $autenticado_por_bootstrap = false;
+
     public function check_permission( WP_REST_Request $request ) {
-        // Usa o webhook_secret separado (nunca exposto no frontend).
-        // Fallback para api_key em instalações legadas que ainda não receberam o secret via sync.
+        // O webhook_secret é o credencial de verdade: nunca sai no frontend.
         $webhook_secret = get_option( 'front18_webhook_secret', '' );
+
+        // Bootstrap: numa instalação que ainda não recebeu o segredo, a api_key é o único
+        // valor compartilhado entre SaaS e plugin. Mas ela é PÚBLICA — sai impressa em
+        // `apiKey: '...'` no HTML de toda página protegida, porque o SDK precisa dela.
+        //
+        // Aceitá-la aqui sem mais nada abria isto: qualquer pessoa que lesse o código-fonte
+        // do site do cliente podia chamar /sync e (a) desligar a proteção de idade zerando
+        // as regras, e (b) gravar um webhook_secret próprio, tomando o canal de configuração
+        // de forma permanente — a partir dali nem o SaaS legítimo conseguiria corrigir.
+        //
+        // A janela é curta (só até o primeiro sync), mas todo cliente novo passa por ela, e
+        // é justamente quando ninguém está olhando. O comentário abaixo já reconhecia o
+        // risco da api_key ser pública para o caminho do body; faltava aplicá-lo aqui.
+        //
+        // Solução: o modo bootstrap continua existindo — senão o primeiro sync nunca chega —
+        // mas fica marcado, e o handle_webhook só aceita dele o campo webhook_secret.
+        $bootstrap = false;
         if ( empty( $webhook_secret ) ) {
             $webhook_secret = get_option( 'front18_api_key', '' );
+            $bootstrap = true;
         }
         if ( empty( $webhook_secret ) ) return false;
 
@@ -104,10 +129,18 @@ class Front18_API {
         $auth_header = $request->get_header( 'authorization' );
         if ( $auth_header && strpos( $auth_header, 'Bearer ' ) === 0 ) {
             $token = substr( $auth_header, 7 );
-            if ( hash_equals( $webhook_secret, $token ) ) return true;
+            if ( hash_equals( $webhook_secret, $token ) ) {
+                $this->autenticado_por_bootstrap = $bootstrap;
+                return true;
+            }
         }
 
         return false;
+    }
+
+    /** True quando o pedido atual autenticou só com a api_key pública. */
+    public function em_bootstrap() {
+        return $this->autenticado_por_bootstrap;
     }
 
     // =========================================================================
@@ -150,6 +183,28 @@ class Front18_API {
     // =========================================================================
 
     public function handle_webhook( WP_REST_Request $request ) {
+        // Pedido autenticado só pela api_key pública: aceita EXCLUSIVAMENTE a entrega do
+        // webhook_secret e para por aqui. Ver a explicação em check_permission().
+        //
+        // Sem este corte, quem lesse a api_key no HTML do site podia zerar as regras de
+        // proteção e desligar o gate de idade — usando apenas informação pública.
+        if ( $this->em_bootstrap() ) {
+            $segredo = $request->get_param( 'webhook_secret' );
+            if ( ! empty( $segredo ) && is_string( $segredo ) && strlen( $segredo ) >= 20 ) {
+                update_option( 'front18_webhook_secret', sanitize_text_field( $segredo ) );
+                return rest_ensure_response( array(
+                    'success'   => true,
+                    'bootstrap' => true,
+                    'message'   => __( 'Segredo de webhook registrado. Reenvie a sincronização usando-o para aplicar as regras.', 'front18' ),
+                ) );
+            }
+            return new WP_Error(
+                'bootstrap_required',
+                __( 'Esta instalação ainda não possui um segredo de webhook. O primeiro sync deve enviá-lo antes de aplicar regras.', 'front18' ),
+                array( 'status' => 403 )
+            );
+        }
+
         $rules = $request->get_param( 'rules' );
 
         if ( ! is_array( $rules ) ) {
