@@ -315,6 +315,19 @@ class Front18_API {
         $order      = $request->get_param( 'order' );
         $with_ghost = rest_sanitize_boolean( $request->get_param( 'with_ghost' ) );
 
+        // Filtro por DATA DE PUBLICACAO do anexo (post_date). O agrupamento por "pasta" ja e
+        // mes/ano; isto acrescenta um intervalo de/ate, para o painel deixar o cliente selecionar
+        // por periodo sem varrer pasta por pasta. inclusive=true faz o "ate" pegar o dia inteiro.
+        $date_from = sanitize_text_field( (string) $request->get_param( 'date_from' ) ); // 'YYYY-MM-DD'
+        $date_to   = sanitize_text_field( (string) $request->get_param( 'date_to' ) );
+        $date_query = array();
+        if ( $date_from !== '' || $date_to !== '' ) {
+            $dq = array( 'inclusive' => true, 'column' => 'post_date' );
+            if ( $date_from !== '' ) { $dq['after']  = $date_from; }
+            if ( $date_to   !== '' ) { $dq['before'] = $date_to; }
+            $date_query = array( $dq );
+        }
+
         // Constrói o array de tipos MIME aceitos
         $mime_types = $this->resolve_mime_types( $mime_raw );
 
@@ -342,6 +355,11 @@ class Front18_API {
                     $id_args['year']     = (int) $fparts[0];
                     $id_args['monthnum'] = (int) $fparts[1];
                 }
+            }
+            // "Selecionar todas" tem de respeitar o MESMO intervalo de datas da grade — senao
+            // marca alem do que o cliente ve filtrado.
+            if ( ! empty( $date_query ) ) {
+                $id_args['date_query'] = $date_query;
             }
             $all_ids = get_posts( $id_args );
             $all_ids = array_values( array_unique( array_map( 'intval', (array) $all_ids ) ) );
@@ -374,6 +392,10 @@ class Front18_API {
                 $args['year']     = (int) $parts[0];
                 $args['monthnum'] = (int) $parts[1];
             }
+        }
+
+        if ( ! empty( $date_query ) ) {
+            $args['date_query'] = $date_query;
         }
 
         $query = new WP_Query( $args );
