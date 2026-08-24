@@ -3,8 +3,8 @@ Contributors: front18
 Donate link: https://front18.com
 Tags: security, sdk, front18
 Requires at least: 5.0
-Tested up to: 6.4
-Stable tag: 1.0.2
+Tested up to: 6.7
+Stable tag: 1.3.0
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -34,6 +34,11 @@ Ao usar essa integração, seu portal ou sistema rodando WordPress ganha proteç
 Não. A integração foi desenhada para operar de modo assíncrono e isolado, garantindo alta compatibilidade.
 
 == Changelog ==
+
+= 1.3.0 =
+* Selecao de midia no WordPress: nova aba "Selecao de Midia" com uma grade que le a sua propria Biblioteca (miniaturas, busca, filtro por data e por pasta). A escolha do que e protegido passa a ser feita dentro do wp-admin, sem enviar as imagens para fora do servidor.
+* Ao salvar, a selecao e empurrada para o Front18 (sync reverso autenticado) e aplicada no site na hora; o gerenciador de midia do painel Front18 vira espelho somente-leitura.
+* Painel do plugin repaginado em abas (Conexao, Protecao, Selecao de Midia, Avancado).
 
 = 1.0.2 =
 * Feature: Destravamento do payload do webhook para suporte estendido a chaves dinâmicas do SDK (Integração Facial, DPO unificado).

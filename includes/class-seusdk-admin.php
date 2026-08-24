@@ -13,6 +13,10 @@ class Front18_Admin {
         // AJAX Endpoints
         add_action( 'wp_ajax_front18_search_posts', array( $this, 'ajax_search_posts' ) );
         add_action( 'wp_ajax_front18_sync_now', array( $this, 'ajax_sync_now' ) );
+
+        // Seleção de mídia dentro do wp-admin (lê a Biblioteca local; salva e empurra para o SaaS)
+        add_action( 'wp_ajax_front18_list_media', array( $this, 'ajax_list_media' ) );
+        add_action( 'wp_ajax_front18_save_media', array( $this, 'ajax_save_media' ) );
         
         // Meta Box for Individual Pages
         add_action( 'add_meta_boxes', array( $this, 'add_post_meta_boxes' ) );
@@ -153,6 +157,41 @@ class Front18_Admin {
             /* Submit */
             .front18-btn-submit { background: linear-gradient(135deg, #f43f5e, #be123c); color: white; border: none; padding: 14px 40px; font-size: 16px; font-weight: 700; border-radius: 8px; cursor: pointer; transition: all 0.3s; box-shadow: 0 4px 15px rgba(244,63,94,0.3); display: inline-flex; align-items: center; gap: 8px; text-transform: uppercase; letter-spacing: 1px; }
             .front18-btn-submit:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(244,63,94,0.4); color: white; }
+
+            /* Abas */
+            .front18-nav-tabs { border-bottom: 1px solid rgba(255,255,255,0.08); margin: 0 0 25px; padding-left: 0; }
+            .front18-nav-tabs .nav-tab { background: transparent; border: none; border-bottom: 2px solid transparent; color: #94a3b8; font-size: 14px; font-weight: 600; padding: 12px 18px; margin: 0 4px -1px 0; border-radius: 0; transition: color 0.2s, border-color 0.2s; }
+            .front18-nav-tabs .nav-tab:hover { color: #f8fafc; background: transparent; }
+            .front18-nav-tabs .nav-tab-active, .front18-nav-tabs .nav-tab-active:hover, .front18-nav-tabs .nav-tab-active:focus { color: #f8fafc; border-bottom-color: #f43f5e; background: transparent; box-shadow: none; }
+            .front18-nav-tabs .nav-tab:focus { box-shadow: none; outline: 2px solid rgba(244,63,94,0.5); outline-offset: 2px; }
+            .front18-tabpanel[hidden] { display: none; }
+
+            /* Seleção de mídia */
+            .front18-scope-choice { display: flex; gap: 12px; margin: 20px 0; flex-wrap: wrap; }
+            .front18-scope-opt { flex: 1; min-width: 220px; display: flex; align-items: flex-start; gap: 10px; padding: 14px 16px; border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; cursor: pointer; transition: border-color 0.2s, background 0.2s; }
+            .front18-scope-opt:hover { border-color: rgba(244,63,94,0.4); }
+            .front18-scope-opt input { margin-top: 3px; accent-color: #f43f5e; }
+            .front18-scope-opt span { display: flex; flex-direction: column; gap: 3px; }
+            .front18-scope-opt strong { color: #f8fafc; font-size: 14px; }
+            .front18-scope-opt small { color: #94a3b8; font-size: 12px; line-height: 1.4; }
+            .front18-media-toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; margin-bottom: 16px; }
+            .front18-media-bulk { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; }
+            .front18-media-counter { color: #94a3b8; font-size: 13px; }
+            .front18-media-counter b { color: #f8fafc; }
+            .front18-btn-ghost { background: rgba(255,255,255,0.04); color: #e2e8f0; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 9px 16px; font-size: 13px; font-weight: 600; cursor: pointer; transition: background 0.2s, border-color 0.2s; }
+            .front18-btn-ghost:hover { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.2); color: #fff; }
+            .front18-media-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 10px; }
+            .front18-media-item { position: relative; border-radius: 8px; overflow: hidden; cursor: pointer; border: 2px solid transparent; background: rgba(255,255,255,0.03); aspect-ratio: 1 / 1; }
+            .front18-media-item img { width: 100%; height: 100%; object-fit: cover; display: block; }
+            .front18-media-item .f18-check { position: absolute; top: 6px; left: 6px; width: 20px; height: 20px; border-radius: 5px; background: rgba(15,23,42,0.7); border: 2px solid rgba(255,255,255,0.6); display: flex; align-items: center; justify-content: center; }
+            .front18-media-item .f18-check::after { content: ""; width: 5px; height: 9px; border: solid transparent; border-width: 0 2px 2px 0; transform: rotate(45deg); margin-top: -2px; }
+            .front18-media-item.f18-on { border-color: #f43f5e; }
+            .front18-media-item.f18-on .f18-check { background: #f43f5e; border-color: #f43f5e; }
+            .front18-media-item.f18-on .f18-check::after { border-color: #fff; }
+            .front18-media-item .f18-title { position: absolute; bottom: 0; left: 0; right: 0; padding: 4px 6px; font-size: 10px; color: #fff; background: linear-gradient(transparent, rgba(0,0,0,0.75)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+            .front18-media-empty { text-align: center; color: #94a3b8; padding: 30px; }
+            .front18-media-savebar { display: flex; align-items: center; gap: 14px; margin-top: 24px; border-top: 1px solid rgba(255,255,255,0.07); padding-top: 20px; }
+            .front18-media-status { font-size: 13px; color: #94a3b8; }
         ' );
     }
 
@@ -218,6 +257,129 @@ class Front18_Admin {
         return $arr;
     }
 
+    // =========================================================================
+    // Seleção de mídia dentro do wp-admin
+    // =========================================================================
+
+    /**
+     * Lista a Biblioteca de Mídia local para a grade. Reaproveita o get_media_library da API REST
+     * (mesma paginação, busca, pasta, intervalo de datas e modo ids_only do "Selecionar todos"),
+     * mas por admin-ajax autenticado por nonce + manage_options — sem expor o webhook_secret no
+     * navegador. Antes essa listagem era o painel SaaS fazendo proxy de centenas de imagens.
+     */
+    public function ajax_list_media() {
+        check_ajax_referer( 'front18_admin_nonce', 'security' );
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( array( 'message' => 'Sem permissão' ), 403 );
+        }
+
+        if ( ! class_exists( 'Front18_API' ) ) {
+            require_once plugin_dir_path( __FILE__ ) . 'class-seusdk-api.php';
+        }
+
+        $req = new WP_REST_Request( 'GET', '/front18/v1/media' );
+        foreach ( array( 'page', 'per_page', 'search', 'folder', 'mime_type', 'orderby', 'order', 'date_from', 'date_to', 'ids_only' ) as $p ) {
+            if ( isset( $_POST[ $p ] ) ) {
+                $req->set_param( $p, wp_unslash( $_POST[ $p ] ) );
+            }
+        }
+        if ( ! $req->get_param( 'page' ) )      { $req->set_param( 'page', 1 ); }
+        if ( ! $req->get_param( 'per_page' ) )  { $req->set_param( 'per_page', 60 ); }
+        if ( ! $req->get_param( 'mime_type' ) ) { $req->set_param( 'mime_type', 'image' ); }
+        if ( ! $req->get_param( 'orderby' ) )   { $req->set_param( 'orderby', 'date' ); }
+        if ( ! $req->get_param( 'order' ) )     { $req->set_param( 'order', 'DESC' ); }
+
+        $api  = new Front18_API();
+        $resp = $api->get_media_library( $req );
+        $data = ( $resp instanceof WP_REST_Response ) ? $resp->get_data() : $resp;
+        wp_send_json_success( $data );
+    }
+
+    /**
+     * Salva a seleção escolhida na grade. O plugin passa a ser o DONO da seleção: guarda local e
+     * empurra para o SaaS (sync reverso), para o SDK na página servir a lista nova. Sem o push, o
+     * track.php seguiria devolvendo a lista antiga do cache.
+     */
+    public function ajax_save_media() {
+        check_ajax_referer( 'front18_admin_nonce', 'security' );
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( array( 'message' => 'Sem permissão' ), 403 );
+        }
+
+        $ids_raw = isset( $_POST['ids'] ) ? json_decode( wp_unslash( $_POST['ids'] ), true ) : array();
+        if ( ! is_array( $ids_raw ) ) { $ids_raw = array(); }
+        $ids = array_values( array_unique( array_filter( array_map( 'intval', $ids_raw ), static function ( $v ) { return $v > 0; } ) ) );
+
+        $scope = ( isset( $_POST['scope'] ) && $_POST['scope'] === 'selected_only' ) ? 'selected_only' : 'all';
+        // Sem seleção não há whitelist — selected_only vazio desprotegeria o site em silêncio.
+        if ( $scope === 'selected_only' && empty( $ids ) ) { $scope = 'all'; }
+
+        // O plugin é o dono: guarda local.
+        update_option( 'front18_protected_media_ids', $ids );
+        $cfg = get_option( 'front18_synced_config', array() );
+        if ( ! is_array( $cfg ) ) { $cfg = array(); }
+        $cfg['protection_scope'] = $scope;
+        if ( $scope === 'selected_only' ) { $cfg['display_mode'] = 'blur_media'; }
+        update_option( 'front18_synced_config', $cfg );
+
+        $push = $this->push_selection_to_saas( $ids, $scope );
+
+        wp_send_json_success( array(
+            'total' => count( $ids ),
+            'scope' => $scope,
+            'push'  => $push,
+        ) );
+    }
+
+    /**
+     * Empurra a seleção para o SaaS (POST /public/api/wp_selection.php), autenticado por
+     * api_key + webhook_secret. A base do SaaS é derivada da URL do SDK. Sem webhook_secret o
+     * canal ainda não foi estabelecido: é preciso um sync normal (painel -> plugin) antes.
+     */
+    private function push_selection_to_saas( array $ids, $scope ) {
+        $api_key = get_option( 'front18_api_key', '' );
+        $secret  = get_option( 'front18_webhook_secret', '' );
+        if ( empty( $api_key ) || empty( $secret ) ) {
+            return array( 'ok' => false, 'reason' => 'sem_canal' );
+        }
+
+        // A API vive ao lado do SDK: .../sdk/front18.js -> .../api/wp_selection.php. Derivar por
+        // vizinhança acompanha instalações com ou sem /public/ no caminho, sem hardcode do prefixo.
+        $sdk_url = get_option( 'front18_sdk_url', 'https://front18.com/public/sdk/front18.js' );
+        if ( strpos( $sdk_url, '/sdk/' ) !== false ) {
+            $endpoint = preg_replace( '#/sdk/[^/?\#]+.*$#', '/api/wp_selection.php', $sdk_url );
+        } else {
+            $parts = wp_parse_url( $sdk_url );
+            if ( empty( $parts['scheme'] ) || empty( $parts['host'] ) ) {
+                return array( 'ok' => false, 'reason' => 'url_invalida' );
+            }
+            $endpoint = $parts['scheme'] . '://' . $parts['host'] . ( isset( $parts['port'] ) ? ':' . $parts['port'] : '' ) . '/public/api/wp_selection.php';
+        }
+        if ( empty( $endpoint ) ) {
+            return array( 'ok' => false, 'reason' => 'url_invalida' );
+        }
+
+        $resp = wp_remote_post( $endpoint, array(
+            'timeout' => 20,
+            'headers' => array(
+                'Content-Type'     => 'application/json',
+                'X-API-KEY'        => $api_key,
+                'X-Front18-Secret' => $secret,
+            ),
+            'body' => wp_json_encode( array(
+                'protected_media_ids' => $ids,
+                'protection_scope'    => $scope,
+            ) ),
+        ) );
+
+        if ( is_wp_error( $resp ) ) {
+            return array( 'ok' => false, 'reason' => 'rede', 'detail' => $resp->get_error_message() );
+        }
+        $code = (int) wp_remote_retrieve_response_code( $resp );
+        $json = json_decode( wp_remote_retrieve_body( $resp ), true );
+        return array( 'ok' => ( $code === 200 && ! empty( $json['success'] ) ), 'http' => $code );
+    }
+
     public function render_admin_page() {
         if ( ! current_user_can( 'manage_options' ) ) return;
 
@@ -270,9 +432,18 @@ class Front18_Admin {
                 </div>
             <?php endif; ?>
 
+            <?php $abaAtiva = ( ! empty( $api_key ) && $last_sync ) ? 'protecao' : 'conexao'; ?>
+            <h2 class="nav-tab-wrapper front18-nav-tabs" role="tablist">
+                <a href="#" class="nav-tab front18-tab<?php echo $abaAtiva === 'conexao' ? ' nav-tab-active' : ''; ?>" data-tab="conexao"><?php esc_html_e( 'Conexão', 'front18' ); ?></a>
+                <a href="#" class="nav-tab front18-tab<?php echo $abaAtiva === 'protecao' ? ' nav-tab-active' : ''; ?>" data-tab="protecao"><?php esc_html_e( 'Proteção', 'front18' ); ?></a>
+                <a href="#" class="nav-tab front18-tab" data-tab="midia"><?php esc_html_e( 'Seleção de Mídia', 'front18' ); ?></a>
+                <a href="#" class="nav-tab front18-tab" data-tab="avancado"><?php esc_html_e( 'Avançado', 'front18' ); ?></a>
+            </h2>
+
             <form method="post" action="options.php">
                 <?php settings_fields( 'front18_options_group' ); ?>
 
+                <div class="front18-tabpanel" data-panel="conexao"<?php echo $abaAtiva !== 'conexao' ? ' hidden' : ''; ?>>
                 <!-- 1 & 2. ATIVAÇÃO E CONFIG BÁSICA -->
                 <div class="front18-card">
                     <h2><?php esc_html_e( '1. Configuração Principal', 'front18' ); ?></h2>
@@ -324,7 +495,9 @@ class Front18_Admin {
                         </button>
                     </div>
                 </div>
+                </div><!-- /painel conexao -->
 
+                <div class="front18-tabpanel" data-panel="protecao"<?php echo $abaAtiva !== 'protecao' ? ' hidden' : ''; ?>>
                 <!-- 3. STATUS DA PROTEÇÃO ATUAL (Resumo das Regras Sincronizadas) -->
                 <?php
                 $synced_config  = get_option( 'front18_synced_config', array() );
@@ -395,7 +568,73 @@ class Front18_Admin {
                     </div>
                 </div>
                 <?php endif; ?>
+                </div><!-- /painel protecao -->
 
+                <div class="front18-tabpanel" data-panel="midia" hidden>
+                    <div class="front18-card">
+                        <h2><?php esc_html_e( 'Seleção de Mídia', 'front18' ); ?></h2>
+                        <p class="card-desc" style="line-height:1.7;">
+                            <?php esc_html_e( 'Escolha, na sua própria Biblioteca de Mídia, exatamente o que é protegido. Tudo acontece dentro do WordPress — suas imagens não saem daqui. Ao salvar, a escolha vale no site na hora.', 'front18' ); ?>
+                        </p>
+
+                        <!-- Escopo da proteção -->
+                        <div class="front18-scope-choice">
+                            <label class="front18-scope-opt">
+                                <input type="radio" name="f18_scope" value="all" checked />
+                                <span><strong><?php esc_html_e( 'Proteger toda a mídia', 'front18' ); ?></strong><small><?php esc_html_e( 'Borra todas as imagens; a lista abaixo só reforça.', 'front18' ); ?></small></span>
+                            </label>
+                            <label class="front18-scope-opt">
+                                <input type="radio" name="f18_scope" value="selected_only" />
+                                <span><strong><?php esc_html_e( 'Proteger só as selecionadas', 'front18' ); ?></strong><small><?php esc_html_e( 'Só o que estiver marcado abaixo é protegido.', 'front18' ); ?></small></span>
+                            </label>
+                        </div>
+
+                        <!-- Filtros -->
+                        <div class="front18-media-toolbar">
+                            <div style="flex:1; min-width:150px;">
+                                <div class="front18-row-desc" style="margin-bottom:4px;"><?php esc_html_e( 'Buscar por nome', 'front18' ); ?></div>
+                                <input type="text" id="f18_media_search" class="front18-input" placeholder="<?php esc_attr_e( 'ex.: banner, capa...', 'front18' ); ?>" />
+                            </div>
+                            <div>
+                                <div class="front18-row-desc" style="margin-bottom:4px;"><?php esc_html_e( 'De', 'front18' ); ?></div>
+                                <input type="date" id="f18_media_from" class="front18-input" />
+                            </div>
+                            <div>
+                                <div class="front18-row-desc" style="margin-bottom:4px;"><?php esc_html_e( 'Até', 'front18' ); ?></div>
+                                <input type="date" id="f18_media_to" class="front18-input" />
+                            </div>
+                            <div>
+                                <div class="front18-row-desc" style="margin-bottom:4px;"><?php esc_html_e( 'Pasta (mês/ano)', 'front18' ); ?></div>
+                                <select id="f18_media_folder" class="front18-input"><option value="all"><?php esc_html_e( 'Todas', 'front18' ); ?></option></select>
+                            </div>
+                            <button type="button" id="f18_media_apply" class="front18-btn-ghost"><?php esc_html_e( 'Filtrar', 'front18' ); ?></button>
+                        </div>
+
+                        <!-- Ações em massa + contador -->
+                        <div class="front18-media-bulk">
+                            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                                <button type="button" id="f18_select_all" class="front18-btn-ghost"><?php esc_html_e( 'Selecionar todas (do filtro)', 'front18' ); ?></button>
+                                <button type="button" id="f18_select_none" class="front18-btn-ghost"><?php esc_html_e( 'Limpar seleção', 'front18' ); ?></button>
+                            </div>
+                            <div class="front18-media-counter"><b id="f18_media_count">0</b> <?php esc_html_e( 'selecionadas', 'front18' ); ?></div>
+                        </div>
+
+                        <!-- Grade -->
+                        <div id="f18_media_grid" class="front18-media-grid" aria-live="polite"></div>
+                        <div id="f18_media_empty" class="front18-media-empty" style="display:none;"><?php esc_html_e( 'Nenhuma mídia encontrada com esses filtros.', 'front18' ); ?></div>
+                        <div style="text-align:center; margin-top:16px;">
+                            <button type="button" id="f18_media_more" class="front18-btn-ghost" style="display:none;"><?php esc_html_e( 'Carregar mais', 'front18' ); ?></button>
+                        </div>
+
+                        <!-- Salvar -->
+                        <div class="front18-media-savebar">
+                            <button type="button" id="f18_media_save" class="front18-btn-submit"><?php esc_html_e( 'Salvar seleção', 'front18' ); ?></button>
+                            <span id="f18_media_status" class="front18-media-status"></span>
+                        </div>
+                    </div>
+                </div><!-- /painel midia -->
+
+                <div class="front18-tabpanel" data-panel="avancado" hidden>
                 <!-- 4. SHORTCODES -->
                 <details class="front18-debug-details">
                     <summary><?php esc_html_e( 'Como proteger partes específicas da página (Shortcodes)', 'front18' ); ?></summary>
@@ -496,6 +735,7 @@ class Front18_Admin {
                         </div>
                     </div>
                 </details>
+                </div><!-- /painel avancado -->
 
                 <div style="text-align: right; margin-top: 35px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 25px;">
                     <button type="submit" name="submit" id="submit" class="front18-btn-submit">
@@ -508,6 +748,141 @@ class Front18_Admin {
 
         <script>
             jQuery(document).ready(function($) {
+                // Abas
+                $('.front18-nav-tabs .front18-tab').on('click', function(e) {
+                    e.preventDefault();
+                    var alvo = $(this).data('tab');
+                    $('.front18-nav-tabs .front18-tab').removeClass('nav-tab-active');
+                    $(this).addClass('nav-tab-active');
+                    $('.front18-tabpanel').prop('hidden', true);
+                    $('.front18-tabpanel[data-panel="' + alvo + '"]').prop('hidden', false);
+                });
+
+                // Seleção de mídia (grade lê a Biblioteca local; salva e empurra para o SaaS)
+                (function() {
+                    var sel = new Set();
+                    var page = 1, totalPages = 1, loaded = false, seeded = false;
+                    var $grid = $('#f18_media_grid'), $count = $('#f18_media_count'),
+                        $empty = $('#f18_media_empty'), $more = $('#f18_media_more'),
+                        $status = $('#f18_media_status');
+
+                    function params(extra) {
+                        return $.extend({
+                            action: 'front18_list_media',
+                            security: front18_ajax.nonce,
+                            search: $('#f18_media_search').val() || '',
+                            date_from: $('#f18_media_from').val() || '',
+                            date_to: $('#f18_media_to').val() || '',
+                            folder: $('#f18_media_folder').val() || 'all',
+                            mime_type: 'image'
+                        }, extra || {});
+                    }
+
+                    function esc(s) { return $('<div></div>').text(s == null ? '' : s).html(); }
+                    function updateCount() { $count.text(sel.size); }
+
+                    function renderItems(items) {
+                        items.forEach(function(m) {
+                            var on = sel.has(m.id);
+                            var $it = $('<div class="front18-media-item"></div>').attr('data-id', m.id);
+                            $it.append($('<img loading="lazy" alt="" />').attr('src', m.url || m.full_url || ''));
+                            $it.append('<span class="f18-check"></span>');
+                            $it.append($('<span class="f18-title"></span>').text(m.title || ('#' + m.id)));
+                            if (on) { $it.addClass('f18-on'); }
+                            $grid.append($it);
+                        });
+                    }
+
+                    function load(reset) {
+                        if (reset) { page = 1; $grid.empty(); }
+                        $status.text('Carregando...');
+                        $.post(front18_ajax.ajaxurl, params({ page: page, per_page: 60 }))
+                            .done(function(res) {
+                                $status.text('');
+                                var d = (res && res.data) ? res.data : {};
+                                var items = d.data || [];
+                                if (!seeded && Array.isArray(d.protected_ids)) {
+                                    d.protected_ids.forEach(function(id) { sel.add(parseInt(id, 10)); });
+                                    seeded = true; updateCount();
+                                }
+                                if (page === 1 && d.folders) {
+                                    var $f = $('#f18_media_folder');
+                                    $f.find('option').not('[value="all"]').remove();
+                                    (d.folders || []).forEach(function(fo) {
+                                        $f.append($('<option></option>').attr('value', fo.value).text(fo.label));
+                                    });
+                                }
+                                totalPages = d.total_pages || 1;
+                                renderItems(items);
+                                $empty.toggle((page === 1) && items.length === 0);
+                                $more.toggle(page < totalPages);
+                                loaded = true;
+                            })
+                            .fail(function() { $status.text('Falha ao carregar a biblioteca.'); });
+                    }
+
+                    // Carrega ao abrir a aba pela 1a vez (evita puxar a biblioteca em toda visita ao admin).
+                    $('.front18-nav-tabs .front18-tab[data-tab="midia"]').on('click', function() {
+                        if (!loaded) { load(true); }
+                    });
+                    $('#f18_media_apply').on('click', function() { load(true); });
+                    $('#f18_media_more').on('click', function() { page++; load(false); });
+
+                    $grid.on('click', '.front18-media-item', function() {
+                        var id = parseInt($(this).attr('data-id'), 10);
+                        if (sel.has(id)) { sel.delete(id); $(this).removeClass('f18-on'); }
+                        else { sel.add(id); $(this).addClass('f18-on'); }
+                        updateCount();
+                    });
+
+                    $('#f18_select_none').on('click', function() {
+                        sel.clear();
+                        $grid.find('.front18-media-item').removeClass('f18-on');
+                        updateCount();
+                    });
+
+                    $('#f18_select_all').on('click', function() {
+                        $status.text('Marcando todas do filtro...');
+                        $.post(front18_ajax.ajaxurl, params({ ids_only: 1 }))
+                            .done(function(res) {
+                                $status.text('');
+                                var d = (res && res.data) ? res.data : {};
+                                (d.all_ids || []).forEach(function(id) { sel.add(parseInt(id, 10)); });
+                                $grid.find('.front18-media-item').each(function() {
+                                    if (sel.has(parseInt($(this).attr('data-id'), 10))) { $(this).addClass('f18-on'); }
+                                });
+                                updateCount();
+                            })
+                            .fail(function() { $status.text('Falha ao marcar todas.'); });
+                    });
+
+                    $('#f18_media_save').on('click', function() {
+                        var scope = $('input[name="f18_scope"]:checked').val() || 'all';
+                        var ids = [];
+                        sel.forEach(function(id) { ids.push(id); });
+                        var $btn = $(this).prop('disabled', true).css('opacity', 0.7);
+                        $status.text('Salvando...');
+                        $.post(front18_ajax.ajaxurl, {
+                            action: 'front18_save_media',
+                            security: front18_ajax.nonce,
+                            ids: JSON.stringify(ids),
+                            scope: scope
+                        }).done(function(res) {
+                            if (res && res.success) {
+                                var d = res.data || {}, push = d.push || {};
+                                var msg = 'Salvo: ' + (d.total || 0) + ' selecionadas.';
+                                if (push.ok) { msg += ' Aplicado no site.'; }
+                                else if (push.reason === 'sem_canal') { msg += ' Sincronize com o painel Front18 uma vez para publicar no site.'; }
+                                else { msg += ' Aviso: nao foi possivel publicar no site agora.'; }
+                                $status.text(msg);
+                            } else {
+                                $status.text('Falha ao salvar.');
+                            }
+                        }).fail(function() { $status.text('Falha de rede ao salvar.'); })
+                        .always(function() { $btn.prop('disabled', false).css('opacity', 1); });
+                    });
+                })();
+
                 // Sincronização Ajax
                 $('#front18_btn_sync').on('click', function(e) {
                     e.preventDefault();

@@ -1,5 +1,20 @@
 === Front18 Security Integration Changelog ===
 
+= 1.3.0 =
+* Selecao de midia no WordPress: nova aba "Selecao de Midia" no painel do plugin, com uma grade
+  que le a sua propria Biblioteca de Midia (miniaturas, busca por nome, filtro por data de
+  publicacao e por pasta mes/ano, "selecionar todas do filtro"). A escolha do que e protegido
+  passa a ser feita dentro do wp-admin — as imagens nao saem do seu servidor. Antes essa
+  listagem era o painel Front18 fazendo proxy de centenas de imagens, o que pesava e estourava
+  timeout em bibliotecas grandes.
+* Ao salvar, a selecao e empurrada para o Front18 (sync reverso, autenticado pelo webhook_secret,
+  nunca pela api_key publica) e aplicada no site na hora. O gerenciador de midia do painel Front18
+  vira espelho somente-leitura para o site: um dono logico por site, sem as duas telas gravando a
+  mesma lista. Degrada com seguranca — se o SaaS ainda nao expoe o endpoint, a selecao fica salva
+  localmente e o painel avisa que nao publicou, sem quebrar nada.
+* Painel repaginado em abas (Conexao, Protecao, Selecao de Midia, Avancado) — mesma informacao,
+  organizada por tarefa. A aba inicial e Conexao numa instalacao nova e Protecao num site ja ativo.
+
 = 1.2.2 =
 * Cache: ao receber uma sincronizacao (/sync), o plugin passa a purgar automaticamente os
   caches de pagina inteira mais comuns (LiteSpeed, WP Rocket, W3 Total Cache, WP Super Cache,
