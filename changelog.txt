@@ -1,5 +1,17 @@
 === Front18 Security Integration Changelog ===
 
+= 1.2.1 =
+* API REST: GET /media aceita filtro por data de publicacao (date_from/date_to sobre o
+  post_date do anexo), aplicado tanto na grade paginada quanto no modo ids_only ("Selecionar
+  todas"), para os dois casarem. O item ja retornava o campo `date`. Pareado com o painel SaaS,
+  que ganha selecao por periodo alem de pasta (mes/ano). Retrocompativel: sem os parametros, o
+  comportamento e o de antes.
+* Admin: a tela passa a dizer em portugues claro O QUE O VISITANTE VE, combinando o modo e o
+  protection_scope (que nao aparecia) — "Todas as midias ficam borradas" x "Apenas as N
+  selecionadas" x "A pagina inteira fica bloqueada". Ganha o botao "Ver como visitante" com o
+  aviso de que so uma janela anonima mostra o efeito: quem ja verificou a idade neste navegador
+  ve tudo liberado, e era isso que fazia parecer que "nada acontecia" no teste.
+
 = 1.2.0 =
 * SEGURANCA: a api_key deixa de poder alterar as regras de protecao. Ela e publica — sai
   impressa no HTML de toda pagina protegida, porque o SDK precisa dela — e o check_permission
