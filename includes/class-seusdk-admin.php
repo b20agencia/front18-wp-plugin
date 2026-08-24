@@ -346,11 +346,35 @@ class Front18_Admin {
                 if ( ! empty( $synced_rules['cpts'] )   ) $scope_parts[] = implode( ', ', (array) $synced_rules['cpts'] );
                 $scope_str      = empty( $scope_parts ) ? __( 'Nenhum', 'front18' ) : implode( ' + ', $scope_parts );
                 $media_count    = is_array( $protected_ids ) ? count( $protected_ids ) : 0;
+
+                // protection_scope ('all' x 'selected_only') e o eixo que mais confunde: e ele que
+                // decide se TUDO e protegido ou so a lista. O painel nao o mostrava. Traduzimos o
+                // efeito real para uma frase em portugues claro, combinando modo + escopo.
+                $scope_media = ! empty( $synced_config['protection_scope'] ) ? $synced_config['protection_scope'] : 'all';
+                if ( $current_mode === 'global_lock' ) {
+                    $resumo_efeito = __( 'A pagina inteira fica bloqueada atras do portao de idade para quem ainda nao verificou.', 'front18' );
+                } elseif ( $scope_media === 'selected_only' ) {
+                    $resumo_efeito = sprintf( __( 'Apenas as %d midias selecionadas ficam borradas. O resto do site fica livre.', 'front18' ), $media_count );
+                } else {
+                    $resumo_efeito = __( 'Todas as imagens, videos e iframes ficam borrados para quem ainda nao verificou a idade.', 'front18' );
+                }
                 ?>
                 <?php if ( $last_sync ) : ?>
                 <div class="front18-card" style="border-color: rgba(99,102,241,0.2);">
                     <h2><?php esc_html_e( '3. Proteção Ativa Agora', 'front18' ); ?></h2>
                     <p class="card-desc"><?php esc_html_e( 'Resumo em tempo real das configurações que o SaaS está aplicando neste site.', 'front18' ); ?></p>
+
+                    <div style="display:flex; align-items:flex-start; gap:12px; flex-wrap:wrap; justify-content:space-between; background:rgba(99,102,241,0.08); border:1px solid rgba(99,102,241,0.25); border-radius:12px; padding:14px 16px; margin-bottom:16px;">
+                        <div style="flex:1; min-width:240px;">
+                            <div style="font-size:11px; text-transform:uppercase; letter-spacing:.5px; color:#a5b4fc; font-weight:700; margin-bottom:4px;"><?php esc_html_e( 'O que o visitante vê', 'front18' ); ?></div>
+                            <div style="font-size:14px; color:#e2e8f0; line-height:1.5;"><?php echo esc_html( $resumo_efeito ); ?></div>
+                        </div>
+                        <a href="<?php echo esc_url( home_url( '/' ) ); ?>" target="_blank" rel="noopener" title="<?php esc_attr_e( 'Abre a home numa aba nova. Para ver o efeito (blur/portao), use uma janela ANONIMA — se voce ja verificou a idade neste navegador, o site mostra tudo liberado.', 'front18' ); ?>" style="white-space:nowrap; background:rgba(15,23,42,0.8); border:1px solid rgba(52,211,153,0.35); color:#34d399; padding:10px 16px; border-radius:8px; font-weight:600; font-size:13px; text-decoration:none;">
+                            <?php esc_html_e( 'Ver como visitante', 'front18' ); ?>
+                        </a>
+                    </div>
+                    <p style="font-size:11px; color:#94a3b8; margin:-8px 0 16px;"><?php esc_html_e( 'Dica: teste sempre numa janela anônima. No seu navegador normal, se você já passou pela verificação, o site te mostra tudo liberado — isso é o comportamento correto, não uma falha.', 'front18' ); ?></p>
+
                     <div class="front18-status-grid">
                         <div class="front18-stat-cell">
                             <div class="front18-stat-value" style="font-size:15px;color:#a5b4fc;"><?php echo esc_html( $mode_label ); ?></div>
