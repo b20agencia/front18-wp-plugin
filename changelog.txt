@@ -1,5 +1,15 @@
 === Front18 Security Integration Changelog ===
 
+= 1.2.2 =
+* Cache: ao receber uma sincronizacao (/sync), o plugin passa a purgar automaticamente os
+  caches de pagina inteira mais comuns (LiteSpeed, WP Rocket, W3 Total Cache, WP Super Cache,
+  SG Optimizer, Cache Enabler, Nginx Helper, Autoptimize; object cache do core tambem). Cada
+  purga e defensiva: so dispara se o plugin/host correspondente existir. Motivo, medido em
+  producao (mclass.bulafacil.com): com LiteSpeed em HIT, o visitante recebia a home em cache de
+  ANTES do Front18 estar ativo — sem o SDK injetado — e nada era protegido, mesmo com a config
+  correta. O SDK e injetado server-side; um cache de pagina inteira congelava o HTML sem ele.
+  Agora toda mudanca de config limpa o cache e a pagina volta a ser renderizada com a protecao.
+
 = 1.2.1 =
 * API REST: GET /media aceita filtro por data de publicacao (date_from/date_to sobre o
   post_date do anexo), aplicado tanto na grade paginada quanto no modo ids_only ("Selecionar

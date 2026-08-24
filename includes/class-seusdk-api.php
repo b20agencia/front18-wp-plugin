@@ -289,12 +289,61 @@ class Front18_API {
         // Invalida o cache do Ghost Tracker ao receber novas regras
         delete_transient( 'front18_ghost_tracker_cache' );
 
+        // Purga o cache de pagina inteira. Sem isto, um site com LiteSpeed/WP Rocket/etc. continua
+        // servindo o HTML antigo — SEM o SDK injetado — e a nova config (ou a propria ativacao da
+        // protecao) so aparece quando o cache expira sozinho. Medido em producao: com LiteSpeed em
+        // HIT, o visitante recebia a pagina sem Front18 e nada era protegido.
+        self::purge_all_page_caches();
+
         return rest_ensure_response( array(
-            'success'   => true,
-            'message'   => __( 'Regras sincronizadas com sucesso via Push.', 'front18' ),
-            'timestamp' => current_time( 'mysql' ),
-            'rules'     => $sanitized_rules,
+            'success'      => true,
+            'message'      => __( 'Regras sincronizadas com sucesso via Push.', 'front18' ),
+            'timestamp'    => current_time( 'mysql' ),
+            'rules'        => $sanitized_rules,
+            'cache_purged' => true,
         ) );
+    }
+
+    /**
+     * Purga os caches de pagina inteira mais comuns do WordPress apos uma sincronizacao.
+     *
+     * Um plugin de age-gate injeta o SDK server-side; um cache de pagina inteira congela o HTML e
+     * passa a servir a versao SEM injecao (ou com uma config antiga). Cada purga e defensiva —
+     * so dispara se o respectivo plugin/host estiver presente. Cobre os alvos mais comuns; nao
+     * pretende ser exaustivo (Cloudflare/edge exigem credenciais e ficam fora daqui).
+     */
+    public static function purge_all_page_caches() {
+        // Object cache do core (nao e pagina, mas barato e as vezes ajuda).
+        if ( function_exists( 'wp_cache_flush' ) ) { wp_cache_flush(); }
+
+        // LiteSpeed Cache (o caso medido no mclass): o plugin escuta esta acao.
+        do_action( 'litespeed_purge_all' );
+        if ( class_exists( 'LiteSpeed_Cache_API' ) && method_exists( 'LiteSpeed_Cache_API', 'purge_all' ) ) {
+            LiteSpeed_Cache_API::purge_all();
+        }
+
+        // WP Rocket
+        if ( function_exists( 'rocket_clean_domain' ) ) { rocket_clean_domain(); }
+
+        // W3 Total Cache
+        if ( function_exists( 'w3tc_flush_all' ) ) { w3tc_flush_all(); }
+
+        // WP Super Cache
+        if ( function_exists( 'wp_cache_clear_cache' ) ) { wp_cache_clear_cache(); }
+
+        // SG Optimizer (SiteGround)
+        if ( function_exists( 'sg_cachepress_purge_cache' ) ) { sg_cachepress_purge_cache(); }
+
+        // Cache Enabler
+        do_action( 'cache_enabler_clear_complete_cache' );
+
+        // Nginx Helper
+        do_action( 'rt_nginx_helper_purge_all' );
+
+        // Autoptimize (CSS/JS agregados)
+        if ( class_exists( 'autoptimizeCache' ) && method_exists( 'autoptimizeCache', 'clearall' ) ) {
+            autoptimizeCache::clearall();
+        }
     }
 
     // =========================================================================
