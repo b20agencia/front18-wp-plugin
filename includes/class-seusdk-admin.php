@@ -585,13 +585,20 @@ class Front18_Admin {
                         </p>
 
                         <!-- Escopo da proteção -->
+                        <?php
+                        // O escopo salvo tem de refletir na tela — senao os radios nasciam sempre em
+                        // "all" e, ao salvar de novo, a escolha "so as selecionadas" era perdida.
+                        $f18_cfg_atual   = get_option( 'front18_synced_config', array() );
+                        $f18_scope_atual = ( is_array( $f18_cfg_atual ) && ! empty( $f18_cfg_atual['protection_scope'] ) )
+                            ? $f18_cfg_atual['protection_scope'] : 'all';
+                        ?>
                         <div class="front18-scope-choice">
                             <label class="front18-scope-opt">
-                                <input type="radio" name="f18_scope" value="all" checked />
+                                <input type="radio" name="f18_scope" value="all" <?php checked( $f18_scope_atual !== 'selected_only' ); ?> />
                                 <span><strong><?php esc_html_e( 'Proteger toda a mídia', 'front18' ); ?></strong><small><?php esc_html_e( 'Borra todas as imagens; a lista abaixo só reforça.', 'front18' ); ?></small></span>
                             </label>
                             <label class="front18-scope-opt">
-                                <input type="radio" name="f18_scope" value="selected_only" />
+                                <input type="radio" name="f18_scope" value="selected_only" <?php checked( $f18_scope_atual === 'selected_only' ); ?> />
                                 <span><strong><?php esc_html_e( 'Proteger só as selecionadas', 'front18' ); ?></strong><small><?php esc_html_e( 'Só o que estiver marcado abaixo é protegido.', 'front18' ); ?></small></span>
                             </label>
                         </div>
