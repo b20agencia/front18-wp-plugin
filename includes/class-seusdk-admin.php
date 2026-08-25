@@ -854,29 +854,58 @@ class Front18_Admin {
                         aiModel = await nsfwjs.load(front18_ajax.ai_model, { size: 224 });
                         return aiModel;
                     }
+                    // Carrega a imagem FRESCA (crossOrigin p/ canvas limpo, e sem depender do lazy-load
+                    // da grade). Assim toda a pagina de imagens e analisada, nao so as visiveis.
+                    function f18LoadForAI(src) {
+                        return new Promise(function(resolve, reject) {
+                            var im = new Image();
+                            im.crossOrigin = 'anonymous';
+                            var to = setTimeout(function() { reject(new Error('timeout')); }, 20000);
+                            im.onload = function() {
+                                clearTimeout(to);
+                                if (im.decode) { im.decode().then(function() { resolve(im); }).catch(function() { resolve(im); }); }
+                                else { resolve(im); }
+                            };
+                            im.onerror = function() { clearTimeout(to); reject(new Error('load')); };
+                            im.src = src;
+                        });
+                    }
+
                     $('#f18_ai_run').on('click', async function() {
                         var $btn = $(this);
                         var $prog = $('#f18_ai_progress').show();
                         var rotulo = $btn.text();
                         $btn.prop('disabled', true).text('Carregando IA...');
-                        $prog.text('Carregando o modelo (só na primeira vez)...');
+                        $prog.text('Carregando o modelo (só na primeira vez, alguns segundos)...');
                         try {
                             var model = await f18EnsureModel();
                             var tiles = $grid.find('.front18-media-item').toArray();
                             if (!tiles.length) { $prog.text('Carregue a biblioteca antes de analisar.'); return; }
                             $btn.text('Analisando...');
-                            var flagged = 0;
+                            var analisadas = 0, comErro = 0, flagged = 0, maiorScore = 0;
                             for (var i = 0; i < tiles.length; i++) {
-                                var img = tiles[i].querySelector('img');
                                 $prog.text('Analisando ' + (i + 1) + ' de ' + tiles.length + '...');
-                                if (!img || !img.complete || !img.naturalWidth) { continue; }
+                                var tileImg = tiles[i].querySelector('img');
+                                var src = tileImg ? (tileImg.currentSrc || tileImg.getAttribute('src') || '') : '';
+                                if (!src) { comErro++; continue; }
+                                var el;
+                                try { el = await f18LoadForAI(src); }
+                                catch (e) { comErro++; continue; }
                                 try {
-                                    var preds = await model.classify(img);
+                                    var preds = await model.classify(el);
                                     var m = {};
                                     preds.forEach(function(p) { m[p.className] = p.probability; });
                                     var explicito = (m.Porn || 0) + (m.Hentai || 0);
                                     var sensual = m.Sexy || 0;
-                                    if (explicito >= 0.6 || sensual >= 0.85) {
+                                    var score = Math.max(explicito, sensual);
+                                    if (score > maiorScore) { maiorScore = score; }
+                                    analisadas++;
+                                    if (window.console && console.log) {
+                                        console.log('[Front18 IA]', (src.split('/').pop() || src),
+                                            'Porn', (m.Porn || 0).toFixed(2), 'Hentai', (m.Hentai || 0).toFixed(2),
+                                            'Sexy', (m.Sexy || 0).toFixed(2), 'Neutral', (m.Neutral || 0).toFixed(2));
+                                    }
+                                    if (explicito >= 0.45 || sensual >= 0.6) {
                                         tiles[i].classList.add('f18-ai-sug');
                                         if (!tiles[i].querySelector('.f18-ai-flag')) {
                                             var flag = document.createElement('span');
@@ -886,9 +915,13 @@ class Front18_Admin {
                                         }
                                         flagged++;
                                     }
-                                } catch (e) { /* imagem de outra origem (CDN) o navegador não deixa ler — ignora */ }
+                                } catch (e) { comErro++; }
                             }
-                            $prog.text('Análise concluída: ' + flagged + ' sugerida(s). Revise e clique para confirmar as que são +18.');
+                            var msg = 'Análise: ' + analisadas + ' lida(s), ' + flagged + ' sugerida(s).';
+                            if (comErro)   { msg += ' ' + comErro + ' não pôde(ram) ser lida(s) pelo navegador (outra origem/CDN).'; }
+                            if (analisadas && !flagged) { msg += ' Maior score visto: ' + Math.round(maiorScore * 100) + '% (abaixo do limiar). Abra o Console (F12) para ver os scores por imagem.'; }
+                            else if (flagged) { msg += ' Revise e clique para confirmar as que são +18.'; }
+                            $prog.text(msg);
                         } catch (e) {
                             $prog.text('Não foi possível analisar agora: ' + (e && e.message ? e.message : 'falha ao carregar a IA') + '.');
                         } finally {

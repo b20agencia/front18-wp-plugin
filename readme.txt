@@ -4,7 +4,7 @@ Donate link: https://front18.com
 Tags: security, sdk, front18
 Requires at least: 5.0
 Tested up to: 6.7
-Stable tag: 1.4.0
+Stable tag: 1.4.1
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -34,6 +34,9 @@ Ao usar essa integração, seu portal ou sistema rodando WordPress ganha proteç
 Não. A integração foi desenhada para operar de modo assíncrono e isolado, garantindo alta compatibilidade.
 
 == Changelog ==
+
+= 1.4.1 =
+* IA de sugestao: correcao — a analise marcava 0. Agora carrega cada imagem de forma fresca (analisa a pagina inteira, nao so o visivel) e com crossOrigin, limiar mais sensivel, e relatorio de lidas/erro/sugeridas (scores no Console F12).
 
 = 1.4.0 =
 * IA de sugestao de conteudo explicito (em teste): botao "Analisar imagens" na Selecao de Midia roda um modelo de deteccao de nudez no proprio navegador — as imagens nao saem do servidor. Marca "possivel +18"; e um auxilio, voce revisa e confirma. Modelo embarcado, carregado sob demanda.

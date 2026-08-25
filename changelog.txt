@@ -1,5 +1,13 @@
 === Front18 Security Integration Changelog ===
 
+= 1.4.1 =
+* IA de sugestao: correcao — a analise concluia com 0 marcadas. Duas causas: imagens fora da
+  tela (lazy-load) eram puladas, e a leitura do <img> exibido podia falhar por canvas "tainted".
+  Agora cada imagem e carregada de forma fresca (analisa a pagina inteira, nao so o visivel) e
+  com crossOrigin (canvas limpo). O limiar ficou mais sensivel e a mensagem passa a informar
+  quantas foram lidas, quantas nao puderam ser lidas (outra origem/CDN) e quantas foram sugeridas;
+  os scores por imagem saem no Console do navegador (F12) para ajudar a calibrar.
+
 = 1.4.0 =
 * IA de sugestao de conteudo explicito (EM TESTE): na aba Selecao de Midia, o botao "Analisar
   imagens" roda um modelo de deteccao de nudez (TensorFlow.js + NSFWJS) no proprio navegador do
