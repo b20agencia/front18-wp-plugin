@@ -211,6 +211,17 @@ class Front18_API {
             return new WP_Error( 'invalid_payload', __( 'Payload inválido. É esperado um objeto de regras.', 'front18' ), array( 'status' => 400 ) );
         }
 
+        // O plugin e o DONO da selecao (protection_scope + protected_media_ids): a escolha de O QUE
+        // proteger vive no wp-admin (aba Selecao de Midia) e sobe ao SaaS pelo wp_selection.php. Depois
+        // que o plugin gravou um escopo, um sync no sentido SaaS -> plugin NAO pode sobrescrever esses
+        // dois campos — senao "proteger so as selecionadas" volta sozinho para "proteger tudo" na
+        // primeira sincronizacao seguinte (o payload traz o escopo do SaaS, cujo default e 'all'; se o
+        // push reverso falhou por falta de webhook_secret, o SaaS ainda esta em 'all' e regravaria por
+        // cima). Antes do primeiro save do plugin (config local vazia) aceitamos o valor do SaaS, para
+        // migrar quem ja tinha selecao feita no painel antigo.
+        $cfg_local   = get_option( 'front18_synced_config', array() );
+        $plugin_owns = is_array( $cfg_local ) && ! empty( $cfg_local['protection_scope'] );
+
         // Sanitização das regras
         $sanitized_rules = array(
             'global' => ! empty( $rules['global'] ),
@@ -239,10 +250,11 @@ class Front18_API {
                                             ? sanitize_textarea_field( wp_unslash( $config_payload['excluded_selectors'] ) )
                                             : '',
                 // 'all' = borra toda midia; 'selected_only' = so a lista de protected_ids.
-                // Valor desconhecido cai em 'all': falhar para o lado protegido.
-                'protection_scope'   => ( isset( $config_payload['protection_scope'] ) && $config_payload['protection_scope'] === 'selected_only' )
-                                            ? 'selected_only'
-                                            : 'all',
+                // Se o plugin ja e dono, preservamos o escopo LOCAL (o painel nao manda mais nisso).
+                // Antes disso (migracao), aceitamos o do payload; desconhecido cai em 'all' (lado seguro).
+                'protection_scope'   => $plugin_owns
+                                            ? ( $cfg_local['protection_scope'] === 'selected_only' ? 'selected_only' : 'all' )
+                                            : ( ( isset( $config_payload['protection_scope'] ) && $config_payload['protection_scope'] === 'selected_only' ) ? 'selected_only' : 'all' ),
                 // Chaves de regiao ('hero', 'cards'...). Lista vazia = sem restricao de regiao.
                 // Os seletores CSS de cada zona vivem no SDK — aqui so trafegam as chaves.
                 'protected_zones'    => ( isset( $config_payload['protected_zones'] ) && is_array( $config_payload['protected_zones'] ) )
@@ -265,6 +277,13 @@ class Front18_API {
                 }
             }
 
+            // Coerencia modo x escopo: "so as selecionadas" e uma whitelist — so faz sentido borrando
+            // a midia. Se o escopo (preservado do plugin) for selected_only, o modo tem de ser
+            // blur_media, senao o global_lock ignoraria a whitelist e travaria a pagina inteira.
+            if ( $sanitized_config['protection_scope'] === 'selected_only' ) {
+                $sanitized_config['display_mode'] = 'blur_media';
+            }
+
             update_option( 'front18_synced_config', $sanitized_config );
         }
 
@@ -276,11 +295,15 @@ class Front18_API {
             update_option( 'front18_webhook_secret', sanitize_text_field( $webhook_secret_payload ) );
         }
 
-        // IDs de mídias protegidas
-        $protected_ids = $request->get_param( 'protected_ids' );
-        if ( is_array( $protected_ids ) ) {
-            $ids = array_filter( array_map( 'intval', $protected_ids ) );
-            update_option( 'front18_protected_media_ids', array_values( $ids ) );
+        // IDs de mídias protegidas — só aceitos do SaaS ENQUANTO o plugin ainda não é dono da
+        // seleção (migração de quem tinha lista no painel antigo). Depois disso a lista local,
+        // gravada pela aba Seleção de Mídia, é a fonte da verdade e não é sobrescrita pelo sync.
+        if ( ! $plugin_owns ) {
+            $protected_ids = $request->get_param( 'protected_ids' );
+            if ( is_array( $protected_ids ) ) {
+                $ids = array_filter( array_map( 'intval', $protected_ids ) );
+                update_option( 'front18_protected_media_ids', array_values( $ids ) );
+            }
         }
 
         update_option( 'front18_synced_rules', $sanitized_rules );

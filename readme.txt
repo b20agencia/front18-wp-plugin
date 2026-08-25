@@ -4,7 +4,7 @@ Donate link: https://front18.com
 Tags: security, sdk, front18
 Requires at least: 5.0
 Tested up to: 6.7
-Stable tag: 1.5.6
+Stable tag: 1.5.7
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -34,6 +34,9 @@ Ao usar essa integração, seu portal ou sistema rodando WordPress ganha proteç
 Não. A integração foi desenhada para operar de modo assíncrono e isolado, garantindo alta compatibilidade.
 
 == Changelog ==
+
+= 1.5.7 =
+* Correcao definitiva: o modo "so as selecionadas" nao volta mais sozinho para "proteger tudo" — o plugin passa a ser o dono do escopo e da lista, e o sync do painel nao sobrescreve.
 
 = 1.5.6 =
 * UX: no modo "so as selecionadas" sem imagens marcadas, o plugin agora orienta em vez de reverter em silencio para "proteger tudo".
