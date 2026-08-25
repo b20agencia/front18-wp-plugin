@@ -94,7 +94,10 @@ class Front18_Admin {
             /* App bar (logo + status) */
             .front18-appbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; background: #fff; border: 1px solid #e4e7ec; border-radius: 14px; box-shadow: 0 1px 2px rgba(16,24,40,.05); padding: 16px 22px; margin-bottom: 18px; flex-wrap: wrap; }
             .front18-brand { display: flex; align-items: center; }
-            .front18-logo { height: 40px; width: auto; display: block; }
+            /* A logo da marca e clara (feita para fundo escuro): sobre o app-bar branco ela sumiria.
+               Vai num chip escuro — contraste garantido e o vermelho da marca casa com o acento. */
+            .front18-logo-chip { background: #14171c; border-radius: 10px; padding: 9px 15px; display: inline-flex; align-items: center; }
+            .front18-logo { height: 28px; width: auto; display: block; }
 
             /* Status pill */
             .front18-badge { display: inline-flex; align-items: center; gap: 9px; padding: 8px 16px; border-radius: 999px; font-weight: 600; font-size: 13px; }
@@ -379,7 +382,9 @@ class Front18_Admin {
             <div class="front18-glass-panel">
                 <div class="front18-appbar">
                     <div class="front18-brand">
-                        <img class="front18-logo" src="<?php echo esc_url( FRONT18_PLUGIN_URL . 'assets/logo.png' ); ?>" alt="Front18 Security Integration" />
+                        <span class="front18-logo-chip">
+                            <img class="front18-logo" src="<?php echo esc_url( FRONT18_PLUGIN_URL . 'assets/logo.png' ); ?>" alt="Front18 Security Integration" />
+                        </span>
                     </div>
                     <span class="front18-badge <?php echo esc_attr($badge_class); ?>"><?php echo esc_html($badge_text); ?></span>
                 </div>

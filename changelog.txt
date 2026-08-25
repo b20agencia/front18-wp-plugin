@@ -1,5 +1,10 @@
 === Front18 Security Integration Changelog ===
 
+= 1.3.2 =
+* Ajuste visual: no novo painel claro, a logo da marca (que e clara, feita para fundo escuro)
+  ganhou um fundo escuro no cabecalho do painel, para aparecer com contraste. Sem mudanca de
+  comportamento.
+
 = 1.3.1 =
 * Painel repaginado: visual claro, amplo e moderno. Uma app-bar com a logo e o status, abas em
   sublinhado e cartoes claros substituem a caixa escura estreita de antes. Tipografia de sistema,
