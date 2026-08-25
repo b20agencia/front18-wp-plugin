@@ -1,5 +1,18 @@
 === Front18 Security Integration Changelog ===
 
+= 1.5.0 =
+* IA de sugestao — varios avancos pedidos em uso:
+  - Foco em nudez EXPLICITA: dispara so em Porn/Hentai (>= 55%) e IGNORA a classe "Sexy". Biquini,
+    lingerie e conteudo sensual deixam de ser marcados — bem menos falso positivo.
+  - Mais rapida: classifica pela miniatura pequena (150px) em vez da media.
+  - Nao trava ao trocar de aba: durante a analise, um audio silencioso mantem a aba "ativa" para
+    o navegador nao estrangular a aba em segundo plano. (Fechar ou minimizar o navegador ainda
+    para; para "fecha tudo e volta amanha" seria preciso analisar no servidor.)
+  - Modo automatico: duas caixas — "Deixar a IA pre-selecionar as sugeridas" e "Salvar sozinho ao
+    terminar". Com o auto-salvar ligado, ao fim a IA aplica a protecao no site e mostra um
+    mini-relatorio (quantas analisadas, quantas marcadas e a %, quantas nao lidas). Voce pode sair,
+    voltar depois e ir removendo os falsos positivos direto na grade.
+
 = 1.4.4 =
 * IA de sugestao: barra de progresso visual — indeterminada enquanto levanta a lista completa da
   biblioteca e depois preenchendo (X de N) conforme analisa cada imagem, para o usuario ver o que

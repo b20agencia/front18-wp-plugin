@@ -556,6 +556,11 @@ class Front18_API {
             $url = wp_get_attachment_url( $post->ID );
         }
 
+        // Miniatura pequena (150px) — usada pela IA para classificar mais rapido (o modelo
+        // reduz para 224px de qualquer jeito, entao nao precisa carregar a media inteira).
+        $thumb = wp_get_attachment_image_url( $post->ID, 'thumbnail' );
+        if ( ! $thumb ) { $thumb = $url; }
+
         $full_url  = wp_get_attachment_url( $post->ID );
         $file_path = get_attached_file( $post->ID );
         $filesize  = $file_path && file_exists( $file_path ) ? filesize( $file_path ) : 0;
@@ -567,6 +572,7 @@ class Front18_API {
             'caption'   => $post->post_excerpt,
             'mime_type' => $post->post_mime_type,
             'url'       => $url,
+            'thumb'     => $thumb,
             'full_url'  => $full_url,
             'filesize'  => $filesize,
             'date'      => $post->post_date,

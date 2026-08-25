@@ -4,7 +4,7 @@ Donate link: https://front18.com
 Tags: security, sdk, front18
 Requires at least: 5.0
 Tested up to: 6.7
-Stable tag: 1.4.4
+Stable tag: 1.5.0
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -34,6 +34,9 @@ Ao usar essa integração, seu portal ou sistema rodando WordPress ganha proteç
 Não. A integração foi desenhada para operar de modo assíncrono e isolado, garantindo alta compatibilidade.
 
 == Changelog ==
+
+= 1.5.0 =
+* IA focada em nudez explicita (ignora biquini/sensual), mais rapida (miniatura pequena), nao trava ao trocar de aba (audio silencioso) e com modo automatico: caixas "pre-selecionar" e "salvar sozinho ao terminar" + mini-relatorio ao fim.
 
 = 1.4.4 =
 * IA de sugestao: barra de progresso visual enquanto analisa, e texto do aviso atualizado (a IA agora pre-seleciona; voce revisa e desmarca).

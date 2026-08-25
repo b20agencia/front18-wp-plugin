@@ -204,6 +204,10 @@ class Front18_Admin {
             .front18-ai-bar { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; justify-content: space-between; background: #f5f3ff; border: 1px solid #ddd6fe; border-radius: 12px; padding: 14px 16px; margin: 18px 0; }
             .front18-ai-info { flex: 1; min-width: 240px; font-size: 12.5px; color: #5a6472; line-height: 1.5; }
             .front18-ai-info strong { display: block; color: #5b21b6; font-size: 13px; margin-bottom: 2px; }
+            .front18-ai-opts { display: flex; flex-direction: column; gap: 5px; margin-top: 9px; }
+            .front18-ai-opts label { display: flex; align-items: flex-start; gap: 7px; font-size: 12.5px; color: #4b5563; cursor: pointer; }
+            .front18-ai-opts input { margin-top: 2px; accent-color: #7c3aed; }
+            .front18-ai-opts small { color: #94a3b8; }
             .front18-ai-run { background: #7c3aed; color: #fff; border: none; border-radius: 9px; padding: 9px 18px; font-size: 13.5px; font-weight: 700; cursor: pointer; transition: filter .15s; flex-shrink: 0; display: inline-flex; align-items: center; gap: 8px; }
             .front18-ai-run:hover { filter: brightness(1.06); }
             .front18-ai-run:disabled { opacity: .6; cursor: default; }
@@ -616,7 +620,11 @@ class Front18_Admin {
                         <div class="front18-ai-bar">
                             <div class="front18-ai-info">
                                 <strong><?php esc_html_e( 'Sugestão automática (IA) — em teste', 'front18' ); ?></strong>
-                                <?php esc_html_e( 'Varre toda a sua Biblioteca aqui no seu próprio navegador (as imagens não saem do servidor) e pré-seleciona as que parecem +18. É um auxílio que pode errar — revise a grade e desmarque as que não deveriam entrar antes de salvar. A classificação final, e a responsabilidade por ela, é sua.', 'front18' ); ?>
+                                <?php esc_html_e( 'Varre toda a sua Biblioteca aqui no seu próprio navegador (as imagens não saem do servidor) e busca nudez explícita. É um auxílio que pode errar — revise a grade e desmarque as que não deveriam entrar. A classificação final, e a responsabilidade por ela, é sua.', 'front18' ); ?>
+                                <div class="front18-ai-opts">
+                                    <label><input type="checkbox" id="f18_ai_autosel" checked /> <?php esc_html_e( 'Deixar a IA pré-selecionar as sugeridas', 'front18' ); ?></label>
+                                    <label><input type="checkbox" id="f18_ai_autosave" /> <?php esc_html_e( 'Salvar sozinho ao terminar', 'front18' ); ?> <small><?php esc_html_e( '(aplica no site sem revisão prévia — você pode revisar e remover depois; a aba precisa ficar aberta até acabar)', 'front18' ); ?></small></label>
+                                </div>
                             </div>
                             <button type="button" id="f18_ai_run" class="front18-ai-run"><?php esc_html_e( 'Analisar imagens', 'front18' ); ?></button>
                         </div>
@@ -822,18 +830,18 @@ class Front18_Admin {
                             .fail(function() { $status.text('Falha ao marcar todas.'); });
                     });
 
-                    $('#f18_media_save').on('click', function() {
+                    // Salva a selecao atual. Reaproveitado pelo botao e pelo "salvar sozinho ao terminar" da IA.
+                    function f18Salvar() {
                         var scope = $('input[name="f18_scope"]:checked').val() || 'all';
                         var ids = [];
                         sel.forEach(function(id) { ids.push(id); });
-                        var $btn = $(this).prop('disabled', true).css('opacity', 0.7);
                         $status.text('Salvando...').removeClass('ok');
-                        $.post(front18_ajax.ajaxurl, {
+                        return $.post(front18_ajax.ajaxurl, {
                             action: 'front18_save_media',
                             security: front18_ajax.nonce,
                             ids: JSON.stringify(ids),
                             scope: scope
-                        }).done(function(res) {
+                        }).then(function(res) {
                             if (res && res.success) {
                                 var d = res.data || {}, push = d.push || {};
                                 var msg = 'Salvo: ' + (d.total || 0) + ' selecionadas.';
@@ -841,11 +849,16 @@ class Front18_Admin {
                                 else if (push.reason === 'sem_canal') { msg += ' Sincronize com o painel Front18 uma vez para publicar no site.'; }
                                 else { msg += ' Aviso: nao foi possivel publicar no site agora.'; }
                                 $status.text(msg).toggleClass('ok', !!push.ok);
-                            } else {
-                                $status.text('Falha ao salvar.');
+                                return { ok: !!push.ok, total: d.total || 0, reason: push.reason };
                             }
-                        }).fail(function() { $status.text('Falha de rede ao salvar.'); })
-                        .always(function() { $btn.prop('disabled', false).css('opacity', 1); });
+                            $status.text('Falha ao salvar.');
+                            return { ok: false };
+                        }, function() { $status.text('Falha de rede ao salvar.'); return { ok: false }; });
+                    }
+
+                    $('#f18_media_save').on('click', function() {
+                        var $btn = $(this).prop('disabled', true).css('opacity', 0.7);
+                        $.when(f18Salvar()).always(function() { $btn.prop('disabled', false).css('opacity', 1); });
                     });
 
                     // ── IA de sugestão: carrega sob demanda; roda no navegador; imagens não saem do servidor ──
@@ -887,35 +900,60 @@ class Front18_Admin {
                     }
 
                     // Marca (e pre-seleciona) na grade uma imagem que a IA sugeriu, se ela estiver renderizada.
+                    // Marca a miniatura como SUGERIDA pela IA (selo + borda). A selecao (f18-on) e feita
+                    // a parte, so quando o usuario deixa a IA pre-selecionar.
                     function f18MarcaTile(id) {
                         var tile = $grid.find('.front18-media-item[data-id="' + id + '"]');
                         if (tile.length) {
-                            tile.addClass('f18-on f18-ai-sug');
+                            tile.addClass('f18-ai-sug');
                             if (!tile.find('.f18-ai-flag').length) { tile.append('<span class="f18-ai-flag">possível +18</span>'); }
                         }
+                    }
+
+                    // Mantem a aba "ativa" com um audio silencioso — senao o navegador estrangula a aba
+                    // em segundo plano e a analise trava quando o usuario troca de aba. (Fechar/minimizar
+                    // o navegador ainda para; para isso so a analise no servidor.)
+                    var f18Audio = null;
+                    function f18KeepAwakeStart() {
+                        try {
+                            var AC = window.AudioContext || window.webkitAudioContext;
+                            if (!AC) { return; }
+                            f18Audio = new AC();
+                            var osc = f18Audio.createOscillator(), gain = f18Audio.createGain();
+                            gain.gain.value = 0;
+                            osc.connect(gain); gain.connect(f18Audio.destination);
+                            osc.start();
+                            f18Audio._osc = osc;
+                        } catch (e) { f18Audio = null; }
+                    }
+                    function f18KeepAwakeStop() {
+                        try { if (f18Audio) { if (f18Audio._osc) { f18Audio._osc.stop(); } f18Audio.close(); } } catch (e) {}
+                        f18Audio = null;
                     }
 
                     $('#f18_ai_run').on('click', async function() {
                         var $btn = $(this);
                         var $prog = $('#f18_ai_progress');
                         var $bar = $('.front18-ai-progressbar'), $fill = $('#f18_ai_progressfill');
+                        var autosel  = $('#f18_ai_autosel').is(':checked');
+                        var autosave = $('#f18_ai_autosave').is(':checked');
                         $('#f18_ai_progresswrap').show();
                         var rotulo = $btn.text();
                         $btn.prop('disabled', true).text('Carregando IA...');
                         $bar.addClass('f18-indeterminado');
                         $prog.text('Carregando o modelo (só na primeira vez, alguns segundos)...');
+                        f18KeepAwakeStart();
                         try {
                             var model = await f18EnsureModel();
 
-                            // 1) Levanta TODAS as imagens da biblioteca (respeitando os filtros atuais),
-                            //    nao so a pagina carregada na grade — pagina por pagina, so os IDs+URLs.
+                            // 1) Levanta TODAS as imagens da biblioteca (respeitando os filtros atuais).
                             $prog.text('Levantando a lista completa de imagens...');
                             var itens = [], p = 1, tp = 1;
                             do {
                                 var resList = await $.post(front18_ajax.ajaxurl, params({ page: p, per_page: 100 }));
                                 var dl = (resList && resList.data) ? resList.data : {};
                                 (dl.data || []).forEach(function(mm) {
-                                    if (mm && mm.id) { itens.push({ id: parseInt(mm.id, 10), url: mm.url || mm.full_url || '' }); }
+                                    if (mm && mm.id) { itens.push({ id: parseInt(mm.id, 10), url: mm.thumb || mm.url || mm.full_url || '' }); }
                                 });
                                 tp = dl.total_pages || 1;
                                 p++;
@@ -923,11 +961,12 @@ class Front18_Admin {
 
                             if (!itens.length) { $prog.text('Nenhuma imagem para analisar.'); $bar.removeClass('f18-indeterminado'); return; }
 
-                            // 2) Classifica cada uma (imagem carregada fresca, no navegador).
+                            // 2) Classifica cada uma. Foco em nudez EXPLICITA: dispara so em Porn/Hentai e
+                            //    IGNORA "Sexy" (biquini/lingerie/sensual), para reduzir falso positivo.
                             $btn.text('Analisando...');
                             $bar.removeClass('f18-indeterminado');
                             $fill.css('width', '0%');
-                            var analisadas = 0, comErro = 0, novas = 0, maiorScore = 0;
+                            var analisadas = 0, comErro = 0, maiorScore = 0;
                             for (var i = 0; i < itens.length; i++) {
                                 $prog.text('Analisando ' + (i + 1) + ' de ' + itens.length + '...');
                                 $fill.css('width', Math.round(((i + 1) / itens.length) * 100) + '%');
@@ -939,36 +978,48 @@ class Front18_Admin {
                                     var preds = await model.classify(el);
                                     var mm = {};
                                     preds.forEach(function(pr) { mm[pr.className] = pr.probability; });
-                                    var explicito = (mm.Porn || 0) + (mm.Hentai || 0);
-                                    var sensual = mm.Sexy || 0;
-                                    var score = Math.max(explicito, sensual);
-                                    if (score > maiorScore) { maiorScore = score; }
+                                    var porn = mm.Porn || 0, hentai = mm.Hentai || 0;
+                                    var explicitoMax = Math.max(porn, hentai);
+                                    if (explicitoMax > maiorScore) { maiorScore = explicitoMax; }
                                     analisadas++;
-                                    if (explicito >= 0.45 || sensual >= 0.6) {
+                                    if (porn >= 0.55 || hentai >= 0.55) {
                                         var id = itens[i].id;
                                         aiFlagged.add(id);
-                                        if (!sel.has(id)) { sel.add(id); novas++; } // PRE-SELECIONA por padrao
                                         f18MarcaTile(id);
+                                        if (autosel) {
+                                            if (!sel.has(id)) { sel.add(id); }
+                                            $grid.find('.front18-media-item[data-id="' + id + '"]').addClass('f18-on');
+                                        }
                                     }
                                 } catch (e) { comErro++; }
                             }
-                            updateCount();
+                            if (autosel) { updateCount(); }
                             $fill.css('width', '100%');
 
-                            // Se a IA sugeriu algo, faz sentido o escopo ser "so as selecionadas" —
-                            // senao a selecao fina nao teria efeito (o modo "tudo" borra tudo).
-                            if (aiFlagged.size > 0) {
+                            // Escopo "so as selecionadas" so faz sentido se a IA de fato pre-selecionou.
+                            if (autosel && aiFlagged.size > 0) {
                                 $('input[name="f18_scope"][value="selected_only"]').prop('checked', true);
                             }
 
-                            var msg = 'Análise: ' + analisadas + ' imagem(ns) lida(s). ' + aiFlagged.size + ' marcada(s) como possível +18 e já pré-selecionada(s).';
-                            if (comErro) { msg += ' ' + comErro + ' não pôde(ram) ser lida(s) pelo navegador (outra origem/CDN).'; }
-                            if (analisadas && !aiFlagged.size) { msg += ' Maior score visto: ' + Math.round(maiorScore * 100) + '% (abaixo do limiar).'; }
-                            else if (aiFlagged.size) { msg += ' Revise a grade e DESMARQUE as que não deveriam entrar; depois clique em Salvar seleção.'; }
-                            $prog.text(msg);
+                            // 3) Mini-relatorio (e auto-aplicar, se pedido).
+                            var pct = analisadas ? Math.round((aiFlagged.size / analisadas) * 100) : 0;
+                            var rel = 'Concluído: ' + analisadas + ' analisada(s), ' + aiFlagged.size + ' marcada(s) como possível +18 (' + pct + '%).';
+                            if (comErro) { rel += ' ' + comErro + ' não lida(s) (CDN/outra origem).'; }
+                            if (!aiFlagged.size) {
+                                $prog.text(rel + ' Nenhuma passou do limiar de nudez explícita (maior score ' + Math.round(maiorScore * 100) + '%).');
+                            } else if (autosel && autosave) {
+                                $prog.text(rel + ' Aplicando no site...');
+                                var r = await f18Salvar();
+                                $prog.text(rel + (r && r.ok ? ' Aplicado no site automaticamente.' : ' Salvo, mas não publicou agora.') + ' Você pode revisar a grade e remover falsos positivos quando quiser.');
+                            } else if (autosel) {
+                                $prog.text(rel + ' Pré-selecionadas na grade — revise, desmarque o que não deve entrar e clique em Salvar seleção.');
+                            } else {
+                                $prog.text(rel + ' Marcadas com o selo "possível +18" (não selecionadas). Clique nas que quiser proteger e depois Salvar seleção.');
+                            }
                         } catch (e) {
                             $prog.text('Não foi possível analisar agora: ' + (e && e.message ? e.message : 'falha ao carregar a IA') + '.');
                         } finally {
+                            f18KeepAwakeStop();
                             $bar.removeClass('f18-indeterminado');
                             $btn.text(rotulo).prop('disabled', false);
                         }
