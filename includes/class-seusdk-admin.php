@@ -82,8 +82,12 @@ class Front18_Admin {
         wp_enqueue_script( 'jquery' );
 
         wp_localize_script( 'jquery', 'front18_ajax', array(
-            'ajaxurl' => admin_url( 'admin-ajax.php' ),
-            'nonce'   => wp_create_nonce( 'front18_admin_nonce' )
+            'ajaxurl'  => admin_url( 'admin-ajax.php' ),
+            'nonce'    => wp_create_nonce( 'front18_admin_nonce' ),
+            // IA de sugestão (embarcada; carregada sob demanda só ao clicar em "Analisar").
+            'ai_tf'    => FRONT18_PLUGIN_URL . 'assets/ai/tf.min.js',
+            'ai_nsfw'  => FRONT18_PLUGIN_URL . 'assets/ai/nsfwjs.min.js',
+            'ai_model' => FRONT18_PLUGIN_URL . 'assets/ai/',
         ));
 
         // Painel claro, amplo, nativo-moderno. Paleta e tipografia de sistema (nada carregado de fora).
@@ -195,6 +199,17 @@ class Front18_Admin {
             .front18-media-savebar { display: flex; align-items: center; gap: 16px; margin-top: 24px; border-top: 1px solid #eef0f3; padding-top: 20px; }
             .front18-media-status { font-size: 13.5px; color: #5a6472; }
             .front18-media-status.ok { color: #0a7a44; font-weight: 600; }
+
+            /* IA de sugestão */
+            .front18-ai-bar { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; justify-content: space-between; background: #f5f3ff; border: 1px solid #ddd6fe; border-radius: 12px; padding: 14px 16px; margin: 18px 0; }
+            .front18-ai-info { flex: 1; min-width: 240px; font-size: 12.5px; color: #5a6472; line-height: 1.5; }
+            .front18-ai-info strong { display: block; color: #5b21b6; font-size: 13px; margin-bottom: 2px; }
+            .front18-ai-run { background: #7c3aed; color: #fff; border: none; border-radius: 9px; padding: 9px 18px; font-size: 13.5px; font-weight: 700; cursor: pointer; transition: filter .15s; flex-shrink: 0; display: inline-flex; align-items: center; gap: 8px; }
+            .front18-ai-run:hover { filter: brightness(1.06); }
+            .front18-ai-run:disabled { opacity: .6; cursor: default; }
+            .front18-ai-progress { font-size: 13px; color: #5b21b6; margin: -4px 0 12px; }
+            .front18-media-item.f18-ai-sug { border-color: #7c3aed; }
+            .front18-media-item .f18-ai-flag { position: absolute; top: 7px; right: 7px; background: #7c3aed; color: #fff; font-size: 9.5px; font-weight: 700; padding: 2px 7px; border-radius: 999px; letter-spacing: .02em; box-shadow: 0 1px 3px rgba(0,0,0,.25); }
 
             /* Nota (aviso leve) */
             .front18-note { display: flex; gap: 12px; align-items: flex-start; background: #f8f9fb; border: 1px solid #e4e7ec; border-radius: 10px; padding: 14px 16px; font-size: 13px; color: #5a6472; line-height: 1.55; margin-bottom: 6px; }
@@ -379,6 +394,20 @@ class Front18_Admin {
 
         ?>
         <div class="wrap front18-admin-wrap">
+            <?php // O <h1> + wp-header-end dao ao WordPress a ancora para EMPILHAR os avisos nativos
+                  // (os nossos e os de outros plugins) aqui no topo, em vez de no meio do painel. ?>
+            <h1 class="screen-reader-text"><?php esc_html_e( 'Front18 Security Integration', 'front18' ); ?></h1>
+
+            <?php settings_errors('front18_options_group'); ?>
+
+            <?php if ( empty($api_key) ) : ?>
+                <div class="notice notice-error is-dismissible" style="margin-left:0; margin-bottom:20px; border-left-color:#dc2626;">
+                    <p><strong><?php esc_html_e( 'Bloqueio Inativo:', 'front18' ); ?></strong> <?php _e( 'Insira a sua <b style="color:#b91c1c;">SaaS API Key / Client ID</b> abaixo para que a blindagem do Front18 comece a atuar.', 'front18' ); ?></p>
+                </div>
+            <?php endif; ?>
+
+            <hr class="wp-header-end">
+
             <div class="front18-glass-panel">
                 <div class="front18-appbar">
                     <div class="front18-brand">
@@ -388,14 +417,6 @@ class Front18_Admin {
                     </div>
                     <span class="front18-badge <?php echo esc_attr($badge_class); ?>"><?php echo esc_html($badge_text); ?></span>
                 </div>
-
-            <?php settings_errors('front18_options_group'); ?>
-
-            <?php if ( empty($api_key) ) : ?>
-                <div class="notice notice-error is-dismissible" style="margin-left:0; margin-bottom:20px; border-left-color:#dc2626;">
-                    <p><strong><?php esc_html_e( 'Bloqueio Inativo:', 'front18' ); ?></strong> <?php _e( 'Insira a sua <b style="color:#b91c1c;">SaaS API Key / Client ID</b> abaixo para que a blindagem do Front18 comece a atuar.', 'front18' ); ?></p>
-                </div>
-            <?php endif; ?>
 
             <?php $abaAtiva = ( ! empty( $api_key ) && $last_sync ) ? 'protecao' : 'conexao'; ?>
             <h2 class="nav-tab-wrapper front18-nav-tabs" role="tablist">
@@ -583,6 +604,16 @@ class Front18_Admin {
                             </div>
                             <div class="front18-media-counter"><b id="f18_media_count">0</b> <?php esc_html_e( 'selecionadas', 'front18' ); ?></div>
                         </div>
+
+                        <!-- IA: sugestão de conteúdo explícito (roda no navegador; imagens não saem do servidor) -->
+                        <div class="front18-ai-bar">
+                            <div class="front18-ai-info">
+                                <strong><?php esc_html_e( 'Sugestão automática (IA) — em teste', 'front18' ); ?></strong>
+                                <?php esc_html_e( 'Analisa as imagens carregadas aqui no seu próprio navegador (elas não saem do seu servidor) e marca as que parecem +18. É um auxílio que pode errar — nenhuma imagem é selecionada sozinha; você revisa e confirma clicando. A classificação final, e a responsabilidade por ela, é sua.', 'front18' ); ?>
+                            </div>
+                            <button type="button" id="f18_ai_run" class="front18-ai-run"><?php esc_html_e( 'Analisar imagens', 'front18' ); ?></button>
+                        </div>
+                        <div id="f18_ai_progress" class="front18-ai-progress" style="display:none;" aria-live="polite"></div>
 
                         <!-- Grade -->
                         <div id="f18_media_grid" class="front18-media-grid" aria-live="polite"></div>
@@ -803,6 +834,66 @@ class Front18_Admin {
                             }
                         }).fail(function() { $status.text('Falha de rede ao salvar.'); })
                         .always(function() { $btn.prop('disabled', false).css('opacity', 1); });
+                    });
+
+                    // ── IA de sugestão: carrega sob demanda; roda no navegador; imagens não saem do servidor ──
+                    var aiModel = null;
+                    function f18LoadScript(src) {
+                        return new Promise(function(resolve, reject) {
+                            var s = document.createElement('script');
+                            s.src = src;
+                            s.onload = resolve;
+                            s.onerror = function() { reject(new Error('falha ao carregar recurso da IA')); };
+                            document.head.appendChild(s);
+                        });
+                    }
+                    async function f18EnsureModel() {
+                        if (aiModel) { return aiModel; }
+                        if (typeof tf === 'undefined')     { await f18LoadScript(front18_ajax.ai_tf); }
+                        if (typeof nsfwjs === 'undefined') { await f18LoadScript(front18_ajax.ai_nsfw); }
+                        aiModel = await nsfwjs.load(front18_ajax.ai_model, { size: 224 });
+                        return aiModel;
+                    }
+                    $('#f18_ai_run').on('click', async function() {
+                        var $btn = $(this);
+                        var $prog = $('#f18_ai_progress').show();
+                        var rotulo = $btn.text();
+                        $btn.prop('disabled', true).text('Carregando IA...');
+                        $prog.text('Carregando o modelo (só na primeira vez)...');
+                        try {
+                            var model = await f18EnsureModel();
+                            var tiles = $grid.find('.front18-media-item').toArray();
+                            if (!tiles.length) { $prog.text('Carregue a biblioteca antes de analisar.'); return; }
+                            $btn.text('Analisando...');
+                            var flagged = 0;
+                            for (var i = 0; i < tiles.length; i++) {
+                                var img = tiles[i].querySelector('img');
+                                $prog.text('Analisando ' + (i + 1) + ' de ' + tiles.length + '...');
+                                if (!img || !img.complete || !img.naturalWidth) { continue; }
+                                try {
+                                    var preds = await model.classify(img);
+                                    var m = {};
+                                    preds.forEach(function(p) { m[p.className] = p.probability; });
+                                    var explicito = (m.Porn || 0) + (m.Hentai || 0);
+                                    var sensual = m.Sexy || 0;
+                                    if (explicito >= 0.6 || sensual >= 0.85) {
+                                        tiles[i].classList.add('f18-ai-sug');
+                                        if (!tiles[i].querySelector('.f18-ai-flag')) {
+                                            var flag = document.createElement('span');
+                                            flag.className = 'f18-ai-flag';
+                                            flag.textContent = 'possível +18';
+                                            tiles[i].appendChild(flag);
+                                        }
+                                        flagged++;
+                                    }
+                                } catch (e) { /* imagem de outra origem (CDN) o navegador não deixa ler — ignora */ }
+                            }
+                            $prog.text('Análise concluída: ' + flagged + ' sugerida(s). Revise e clique para confirmar as que são +18.');
+                        } catch (e) {
+                            $prog.text('Não foi possível analisar agora: ' + (e && e.message ? e.message : 'falha ao carregar a IA') + '.');
+                        } finally {
+                            $btn.text(rotulo).prop('disabled', false);
+                        }
                     });
                 })();
 

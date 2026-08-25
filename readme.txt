@@ -4,7 +4,7 @@ Donate link: https://front18.com
 Tags: security, sdk, front18
 Requires at least: 5.0
 Tested up to: 6.7
-Stable tag: 1.3.2
+Stable tag: 1.4.0
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -34,6 +34,10 @@ Ao usar essa integração, seu portal ou sistema rodando WordPress ganha proteç
 Não. A integração foi desenhada para operar de modo assíncrono e isolado, garantindo alta compatibilidade.
 
 == Changelog ==
+
+= 1.4.0 =
+* IA de sugestao de conteudo explicito (em teste): botao "Analisar imagens" na Selecao de Midia roda um modelo de deteccao de nudez no proprio navegador — as imagens nao saem do servidor. Marca "possivel +18"; e um auxilio, voce revisa e confirma. Modelo embarcado, carregado sob demanda.
+* Avisos do WordPress agora aparecem no topo da pagina (padrao h1 + wp-header-end), nao no meio do painel.
 
 = 1.3.2 =
 * Ajuste visual: a logo da marca ganhou um fundo escuro no cabecalho do painel, para aparecer com contraste no novo visual claro.
