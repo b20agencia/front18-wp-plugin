@@ -645,8 +645,12 @@ class Front18_Admin {
                                             <option value="obvio" selected><?php esc_html_e( 'Só o óbvio — menos erros (recomendado)', 'front18' ); ?></option>
                                             <option value="equilibrado"><?php esc_html_e( 'Equilibrado', 'front18' ); ?></option>
                                             <option value="sensivel"><?php esc_html_e( 'Mais sensível — pega mais, erra mais', 'front18' ); ?></option>
+                                            <option value="frouxo"><?php esc_html_e( 'Frouxo — pega quase tudo suspeito (muitos falsos positivos)', 'front18' ); ?></option>
                                         </select>
                                     </label>
+                                    <div id="f18_ai_frouxo_aviso" style="display:none; background:#fdf6e6; border:1px solid #e6d9a8; color:#8a6d1a; border-radius:8px; padding:8px 12px; font-size:12px; line-height:1.5;">
+                                        <strong><?php esc_html_e( 'Modo frouxo:', 'front18' ); ?></strong> <?php esc_html_e( 'vai marcar MUITA coisa que não é +18 (inclusive fotos sensuais/biquíni e até normais). Use só para não deixar nada passar — e revise com calma depois, usando o filtro "Ver → Marcadas" para tirar os exageros. A responsabilidade da classificação é sua.', 'front18' ); ?>
+                                    </div>
                                     <label><input type="checkbox" id="f18_ai_autosel" checked /> <?php esc_html_e( 'Deixar a IA pré-selecionar as sugeridas', 'front18' ); ?></label>
                                     <label><input type="checkbox" id="f18_ai_autosave" /> <?php esc_html_e( 'Salvar sozinho ao terminar', 'front18' ); ?> <small><?php esc_html_e( '(aplica no site sem revisão prévia — você pode revisar e remover depois; a aba precisa ficar aberta até acabar)', 'front18' ); ?></small></label>
                                 </div>
@@ -962,6 +966,10 @@ class Front18_Admin {
                         f18Audio = null;
                     }
 
+                    $('#f18_ai_sens').on('change', function() {
+                        $('#f18_ai_frouxo_aviso').toggle($(this).val() === 'frouxo');
+                    });
+
                     $('#f18_ai_run').on('click', async function() {
                         var $btn = $(this);
                         var $prog = $('#f18_ai_progress');
@@ -1014,14 +1022,23 @@ class Front18_Admin {
                                         mm[pr.className] = pr.probability;
                                         if (pr.probability > topP) { topP = pr.probability; top = pr.className; }
                                     });
-                                    var explicitoMax = Math.max(mm.Porn || 0, mm.Hentai || 0);
+                                    var porn = mm.Porn || 0, hentai = mm.Hentai || 0, sexy = mm.Sexy || 0;
+                                    var explicitoMax = Math.max(porn, hentai);
                                     if (explicitoMax > maiorScore) { maiorScore = explicitoMax; }
                                     analisadas++;
-                                    // So marca quando a classe DOMINANTE (palpite nº1 do modelo) e explicita
-                                    // (Porn ou Hentai) E passa do limiar. Foto normal tem "Neutral" como
-                                    // dominante, entao nao marca — mesmo com um Porn moderado. Biquini cai
-                                    // em "Sexy" (que nunca dispara aqui). Isso derruba os falsos positivos.
-                                    var ehExplicita = (top === 'Porn' || top === 'Hentai') && topP >= thr;
+                                    var ehExplicita;
+                                    if (sens === 'frouxo') {
+                                        // Modo desleixado: NAO exige que a classe seja dominante. Pega qualquer
+                                        // sinal moderado de nudez OU sensualidade — de proposito, para nao
+                                        // deixar passar. Marca muito falso positivo (o aviso avisa disso).
+                                        ehExplicita = (porn + hentai) >= 0.30 || sexy >= 0.55;
+                                    } else {
+                                        // Modos rigorosos: a classe DOMINANTE (palpite nº1) tem de ser explicita
+                                        // (Porn/Hentai) E passar do limiar. Foto normal tem "Neutral" como
+                                        // dominante, entao nao marca — mesmo com um Porn moderado; biquini cai
+                                        // em "Sexy" (que nunca dispara aqui).
+                                        ehExplicita = (top === 'Porn' || top === 'Hentai') && topP >= thr;
+                                    }
                                     if (ehExplicita) {
                                         var id = itens[i].id;
                                         aiFlagged.add(id);
