@@ -277,7 +277,7 @@ class Front18_Admin {
         }
 
         $req = new WP_REST_Request( 'GET', '/front18/v1/media' );
-        foreach ( array( 'page', 'per_page', 'search', 'folder', 'mime_type', 'orderby', 'order', 'date_from', 'date_to', 'ids_only' ) as $p ) {
+        foreach ( array( 'page', 'per_page', 'search', 'folder', 'mime_type', 'orderby', 'order', 'date_from', 'date_to', 'ids_only', 'selection' ) as $p ) {
             if ( isset( $_POST[ $p ] ) ) {
                 $req->set_param( $p, wp_unslash( $_POST[ $p ] ) );
             }
@@ -614,6 +614,14 @@ class Front18_Admin {
                                 <div class="front18-row-desc" style="margin-bottom:4px;"><?php esc_html_e( 'Pasta (mês/ano)', 'front18' ); ?></div>
                                 <select id="f18_media_folder" class="front18-input"><option value="all"><?php esc_html_e( 'Todas', 'front18' ); ?></option></select>
                             </div>
+                            <div>
+                                <div class="front18-row-desc" style="margin-bottom:4px;"><?php esc_html_e( 'Ver', 'front18' ); ?></div>
+                                <select id="f18_media_selection" class="front18-input">
+                                    <option value="all"><?php esc_html_e( 'Todas', 'front18' ); ?></option>
+                                    <option value="protected"><?php esc_html_e( 'Marcadas / protegidas', 'front18' ); ?></option>
+                                    <option value="unprotected"><?php esc_html_e( 'Sem marca', 'front18' ); ?></option>
+                                </select>
+                            </div>
                             <button type="button" id="f18_media_apply" class="front18-btn-ghost"><?php esc_html_e( 'Filtrar', 'front18' ); ?></button>
                         </div>
 
@@ -764,6 +772,7 @@ class Front18_Admin {
                             date_from: $('#f18_media_from').val() || '',
                             date_to: $('#f18_media_to').val() || '',
                             folder: $('#f18_media_folder').val() || 'all',
+                            selection: $('#f18_media_selection').val() || 'all',
                             mime_type: 'image'
                         }, extra || {});
                     }
@@ -817,6 +826,7 @@ class Front18_Admin {
                         if (!loaded) { load(true); }
                     });
                     $('#f18_media_apply').on('click', function() { load(true); });
+                    $('#f18_media_selection').on('change', function() { load(true); });
                     $('#f18_media_more').on('click', function() { page++; load(false); });
 
                     $grid.on('click', '.front18-media-item', function() {

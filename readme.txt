@@ -4,7 +4,7 @@ Donate link: https://front18.com
 Tags: security, sdk, front18
 Requires at least: 5.0
 Tested up to: 6.7
-Stable tag: 1.5.2
+Stable tag: 1.5.3
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -34,6 +34,9 @@ Ao usar essa integração, seu portal ou sistema rodando WordPress ganha proteç
 Não. A integração foi desenhada para operar de modo assíncrono e isolado, garantindo alta compatibilidade.
 
 == Changelog ==
+
+= 1.5.3 =
+* Selecao de Midia: filtro "Ver" (Todas / Marcadas / Sem marca) para revisar a IA — cacar falso positivo ou conferir o que passou.
 
 = 1.5.2 =
 * Telemetria: ao salvar, o plugin informa ao Front18 como a protecao foi configurada e o uso da IA (sem enviar imagens), para o suporte ter visibilidade.

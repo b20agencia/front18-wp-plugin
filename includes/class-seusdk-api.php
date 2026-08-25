@@ -364,6 +364,13 @@ class Front18_API {
         $order      = $request->get_param( 'order' );
         $with_ghost = rest_sanitize_boolean( $request->get_param( 'with_ghost' ) );
 
+        // Filtro por SELECAO (proteção): 'protected' = so as ja marcadas/protegidas (para o cliente
+        // revisar falso positivo da IA), 'unprotected' = so as livres (para conferir se a IA deixou
+        // passar algo). Baseado em front18_protected_media_ids (o que ficou salvo).
+        $selection = (string) $request->get_param( 'selection' );
+        $sel_ids   = get_option( 'front18_protected_media_ids', array() );
+        $sel_ids   = is_array( $sel_ids ) ? array_values( array_filter( array_map( 'intval', $sel_ids ) ) ) : array();
+
         // Filtro por DATA DE PUBLICACAO do anexo (post_date). O agrupamento por "pasta" ja e
         // mes/ano; isto acrescenta um intervalo de/ate, para o painel deixar o cliente selecionar
         // por periodo sem varrer pasta por pasta. inclusive=true faz o "ate" pegar o dia inteiro.
@@ -410,6 +417,11 @@ class Front18_API {
             if ( ! empty( $date_query ) ) {
                 $id_args['date_query'] = $date_query;
             }
+            if ( $selection === 'protected' ) {
+                $id_args['post__in'] = ! empty( $sel_ids ) ? $sel_ids : array( 0 );
+            } elseif ( $selection === 'unprotected' && ! empty( $sel_ids ) ) {
+                $id_args['post__not_in'] = $sel_ids;
+            }
             $all_ids = get_posts( $id_args );
             $all_ids = array_values( array_unique( array_map( 'intval', (array) $all_ids ) ) );
 
@@ -445,6 +457,11 @@ class Front18_API {
 
         if ( ! empty( $date_query ) ) {
             $args['date_query'] = $date_query;
+        }
+        if ( $selection === 'protected' ) {
+            $args['post__in'] = ! empty( $sel_ids ) ? $sel_ids : array( 0 );
+        } elseif ( $selection === 'unprotected' && ! empty( $sel_ids ) ) {
+            $args['post__not_in'] = $sel_ids;
         }
 
         $query = new WP_Query( $args );
