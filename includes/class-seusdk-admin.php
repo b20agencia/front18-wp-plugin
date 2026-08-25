@@ -208,6 +208,8 @@ class Front18_Admin {
             .front18-ai-opts label { display: flex; align-items: flex-start; gap: 7px; font-size: 12.5px; color: #4b5563; cursor: pointer; }
             .front18-ai-opts input { margin-top: 2px; accent-color: #7c3aed; }
             .front18-ai-opts small { color: #94a3b8; }
+            .front18-ai-sens { align-items: center !important; gap: 8px; font-weight: 600; color: #5b21b6; }
+            .front18-ai-sens select { font-size: 12.5px; padding: 5px 10px; border: 1px solid #ddd6fe; border-radius: 8px; background: #fff; color: #4b5563; font-weight: 500; cursor: pointer; }
             .front18-ai-run { background: #7c3aed; color: #fff; border: none; border-radius: 9px; padding: 9px 18px; font-size: 13.5px; font-weight: 700; cursor: pointer; transition: filter .15s; flex-shrink: 0; display: inline-flex; align-items: center; gap: 8px; }
             .front18-ai-run:hover { filter: brightness(1.06); }
             .front18-ai-run:disabled { opacity: .6; cursor: default; }
@@ -622,6 +624,13 @@ class Front18_Admin {
                                 <strong><?php esc_html_e( 'Sugestão automática (IA) — em teste', 'front18' ); ?></strong>
                                 <?php esc_html_e( 'Varre toda a sua Biblioteca aqui no seu próprio navegador (as imagens não saem do servidor) e busca nudez explícita. É um auxílio que pode errar — revise a grade e desmarque as que não deveriam entrar. A classificação final, e a responsabilidade por ela, é sua.', 'front18' ); ?>
                                 <div class="front18-ai-opts">
+                                    <label class="front18-ai-sens"><?php esc_html_e( 'Rigor:', 'front18' ); ?>
+                                        <select id="f18_ai_sens">
+                                            <option value="obvio" selected><?php esc_html_e( 'Só o óbvio — menos erros (recomendado)', 'front18' ); ?></option>
+                                            <option value="equilibrado"><?php esc_html_e( 'Equilibrado', 'front18' ); ?></option>
+                                            <option value="sensivel"><?php esc_html_e( 'Mais sensível — pega mais, erra mais', 'front18' ); ?></option>
+                                        </select>
+                                    </label>
                                     <label><input type="checkbox" id="f18_ai_autosel" checked /> <?php esc_html_e( 'Deixar a IA pré-selecionar as sugeridas', 'front18' ); ?></label>
                                     <label><input type="checkbox" id="f18_ai_autosave" /> <?php esc_html_e( 'Salvar sozinho ao terminar', 'front18' ); ?> <small><?php esc_html_e( '(aplica no site sem revisão prévia — você pode revisar e remover depois; a aba precisa ficar aberta até acabar)', 'front18' ); ?></small></label>
                                 </div>
@@ -937,6 +946,8 @@ class Front18_Admin {
                         var $bar = $('.front18-ai-progressbar'), $fill = $('#f18_ai_progressfill');
                         var autosel  = $('#f18_ai_autosel').is(':checked');
                         var autosave = $('#f18_ai_autosave').is(':checked');
+                        var sens = $('#f18_ai_sens').val();
+                        var thr = sens === 'sensivel' ? 0.45 : (sens === 'equilibrado' ? 0.60 : 0.75);
                         $('#f18_ai_progresswrap').show();
                         var rotulo = $btn.text();
                         $btn.prop('disabled', true).text('Carregando IA...');
@@ -976,13 +987,20 @@ class Front18_Admin {
                                 catch (e) { comErro++; continue; }
                                 try {
                                     var preds = await model.classify(el);
-                                    var mm = {};
-                                    preds.forEach(function(pr) { mm[pr.className] = pr.probability; });
-                                    var porn = mm.Porn || 0, hentai = mm.Hentai || 0;
-                                    var explicitoMax = Math.max(porn, hentai);
+                                    var mm = {}, top = '', topP = 0;
+                                    preds.forEach(function(pr) {
+                                        mm[pr.className] = pr.probability;
+                                        if (pr.probability > topP) { topP = pr.probability; top = pr.className; }
+                                    });
+                                    var explicitoMax = Math.max(mm.Porn || 0, mm.Hentai || 0);
                                     if (explicitoMax > maiorScore) { maiorScore = explicitoMax; }
                                     analisadas++;
-                                    if (porn >= 0.55 || hentai >= 0.55) {
+                                    // So marca quando a classe DOMINANTE (palpite nº1 do modelo) e explicita
+                                    // (Porn ou Hentai) E passa do limiar. Foto normal tem "Neutral" como
+                                    // dominante, entao nao marca — mesmo com um Porn moderado. Biquini cai
+                                    // em "Sexy" (que nunca dispara aqui). Isso derruba os falsos positivos.
+                                    var ehExplicita = (top === 'Porn' || top === 'Hentai') && topP >= thr;
+                                    if (ehExplicita) {
                                         var id = itens[i].id;
                                         aiFlagged.add(id);
                                         f18MarcaTile(id);

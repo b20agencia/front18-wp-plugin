@@ -1,5 +1,13 @@
 === Front18 Security Integration Changelog ===
 
+= 1.5.1 =
+* IA de sugestao: bem menos falso positivo em fotos normais. O criterio deixou de ser "Porn acima
+  de um numero" e passou a exigir que a classe DOMINANTE do modelo (o palpite nº1) seja explicita
+  (Porn ou Hentai) E passe do limiar. Foto normal tem "Neutral" como classe dominante, entao nao
+  marca — mesmo que o Porn de um valor moderado. Adicionado um controle de "Rigor" (Só o óbvio /
+  Equilibrado / Mais sensivel) para voce calibrar na hora, sem depender de nova versao. Padrao:
+  "Só o óbvio".
+
 = 1.5.0 =
 * IA de sugestao — varios avancos pedidos em uso:
   - Foco em nudez EXPLICITA: dispara so em Porn/Hentai (>= 55%) e IGNORA a classe "Sexy". Biquini,
