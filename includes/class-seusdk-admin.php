@@ -207,7 +207,14 @@ class Front18_Admin {
             .front18-ai-run { background: #7c3aed; color: #fff; border: none; border-radius: 9px; padding: 9px 18px; font-size: 13.5px; font-weight: 700; cursor: pointer; transition: filter .15s; flex-shrink: 0; display: inline-flex; align-items: center; gap: 8px; }
             .front18-ai-run:hover { filter: brightness(1.06); }
             .front18-ai-run:disabled { opacity: .6; cursor: default; }
-            .front18-ai-progress { font-size: 13px; color: #5b21b6; margin: -4px 0 12px; }
+            #f18_ai_progresswrap { margin: -4px 0 14px; }
+            .front18-ai-progress { font-size: 13px; color: #5b21b6; margin: 0 0 6px; }
+            .front18-ai-progressbar { height: 8px; background: #ece9fb; border-radius: 999px; overflow: hidden; }
+            .front18-ai-progressbar-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #7c3aed, #a855f7); border-radius: 999px; transition: width .2s ease; }
+            .front18-ai-progressbar.f18-indeterminado { position: relative; }
+            .front18-ai-progressbar.f18-indeterminado .front18-ai-progressbar-fill { width: 38%; animation: f18aislide 1.1s infinite ease-in-out; }
+            @keyframes f18aislide { 0% { margin-left: -40%; } 100% { margin-left: 100%; } }
+            @media (prefers-reduced-motion: reduce) { .front18-ai-progressbar.f18-indeterminado .front18-ai-progressbar-fill { animation: none; width: 100%; } }
             .front18-media-item.f18-ai-sug { border-color: #7c3aed; }
             .front18-media-item .f18-ai-flag { position: absolute; top: 7px; right: 7px; background: #7c3aed; color: #fff; font-size: 9.5px; font-weight: 700; padding: 2px 7px; border-radius: 999px; letter-spacing: .02em; box-shadow: 0 1px 3px rgba(0,0,0,.25); }
 
@@ -609,11 +616,14 @@ class Front18_Admin {
                         <div class="front18-ai-bar">
                             <div class="front18-ai-info">
                                 <strong><?php esc_html_e( 'Sugestão automática (IA) — em teste', 'front18' ); ?></strong>
-                                <?php esc_html_e( 'Analisa as imagens carregadas aqui no seu próprio navegador (elas não saem do seu servidor) e marca as que parecem +18. É um auxílio que pode errar — nenhuma imagem é selecionada sozinha; você revisa e confirma clicando. A classificação final, e a responsabilidade por ela, é sua.', 'front18' ); ?>
+                                <?php esc_html_e( 'Varre toda a sua Biblioteca aqui no seu próprio navegador (as imagens não saem do servidor) e pré-seleciona as que parecem +18. É um auxílio que pode errar — revise a grade e desmarque as que não deveriam entrar antes de salvar. A classificação final, e a responsabilidade por ela, é sua.', 'front18' ); ?>
                             </div>
                             <button type="button" id="f18_ai_run" class="front18-ai-run"><?php esc_html_e( 'Analisar imagens', 'front18' ); ?></button>
                         </div>
-                        <div id="f18_ai_progress" class="front18-ai-progress" style="display:none;" aria-live="polite"></div>
+                        <div id="f18_ai_progresswrap" style="display:none;">
+                            <div id="f18_ai_progress" class="front18-ai-progress" aria-live="polite"></div>
+                            <div class="front18-ai-progressbar"><div id="f18_ai_progressfill" class="front18-ai-progressbar-fill"></div></div>
+                        </div>
 
                         <!-- Grade -->
                         <div id="f18_media_grid" class="front18-media-grid" aria-live="polite"></div>
@@ -887,9 +897,12 @@ class Front18_Admin {
 
                     $('#f18_ai_run').on('click', async function() {
                         var $btn = $(this);
-                        var $prog = $('#f18_ai_progress').show();
+                        var $prog = $('#f18_ai_progress');
+                        var $bar = $('.front18-ai-progressbar'), $fill = $('#f18_ai_progressfill');
+                        $('#f18_ai_progresswrap').show();
                         var rotulo = $btn.text();
                         $btn.prop('disabled', true).text('Carregando IA...');
+                        $bar.addClass('f18-indeterminado');
                         $prog.text('Carregando o modelo (só na primeira vez, alguns segundos)...');
                         try {
                             var model = await f18EnsureModel();
@@ -908,13 +921,16 @@ class Front18_Admin {
                                 p++;
                             } while (p <= tp);
 
-                            if (!itens.length) { $prog.text('Nenhuma imagem para analisar.'); return; }
+                            if (!itens.length) { $prog.text('Nenhuma imagem para analisar.'); $bar.removeClass('f18-indeterminado'); return; }
 
                             // 2) Classifica cada uma (imagem carregada fresca, no navegador).
                             $btn.text('Analisando...');
+                            $bar.removeClass('f18-indeterminado');
+                            $fill.css('width', '0%');
                             var analisadas = 0, comErro = 0, novas = 0, maiorScore = 0;
                             for (var i = 0; i < itens.length; i++) {
                                 $prog.text('Analisando ' + (i + 1) + ' de ' + itens.length + '...');
+                                $fill.css('width', Math.round(((i + 1) / itens.length) * 100) + '%');
                                 if (!itens[i].url) { comErro++; continue; }
                                 var el;
                                 try { el = await f18LoadForAI(itens[i].url); }
@@ -937,6 +953,7 @@ class Front18_Admin {
                                 } catch (e) { comErro++; }
                             }
                             updateCount();
+                            $fill.css('width', '100%');
 
                             // Se a IA sugeriu algo, faz sentido o escopo ser "so as selecionadas" —
                             // senao a selecao fina nao teria efeito (o modo "tudo" borra tudo).
@@ -952,6 +969,7 @@ class Front18_Admin {
                         } catch (e) {
                             $prog.text('Não foi possível analisar agora: ' + (e && e.message ? e.message : 'falha ao carregar a IA') + '.');
                         } finally {
+                            $bar.removeClass('f18-indeterminado');
                             $btn.text(rotulo).prop('disabled', false);
                         }
                     });

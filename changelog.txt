@@ -1,5 +1,11 @@
 === Front18 Security Integration Changelog ===
 
+= 1.4.4 =
+* IA de sugestao: barra de progresso visual — indeterminada enquanto levanta a lista completa da
+  biblioteca e depois preenchendo (X de N) conforme analisa cada imagem, para o usuario ver o que
+  esta acontecendo. O texto do aviso foi atualizado para refletir que a IA agora PRE-SELECIONA as
+  sugeridas (voce revisa e desmarca), em vez de "nada e selecionado sozinho".
+
 = 1.4.3 =
 * IA de sugestao — dois avancos pedidos em uso:
   1) PRE-SELECAO: as imagens marcadas como possivel +18 ja entram SELECIONADas por padrao. Voce
