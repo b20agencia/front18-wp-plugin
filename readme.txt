@@ -4,7 +4,7 @@ Donate link: https://front18.com
 Tags: security, sdk, front18
 Requires at least: 5.0
 Tested up to: 6.7
-Stable tag: 1.3.0
+Stable tag: 1.3.1
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -34,6 +34,10 @@ Ao usar essa integração, seu portal ou sistema rodando WordPress ganha proteç
 Não. A integração foi desenhada para operar de modo assíncrono e isolado, garantindo alta compatibilidade.
 
 == Changelog ==
+
+= 1.3.1 =
+* Painel repaginado: visual claro, amplo e moderno (app-bar com a logo, abas em sublinhado, cartoes claros), no lugar da caixa escura estreita.
+* Enxugado: sairam o seletor de posts include/exclude, a lista de shortcodes e a dependencia externa do Select2 (CDN). A protecao vem da Selecao de Midia e do painel.
 
 = 1.3.0 =
 * Selecao de midia no WordPress: nova aba "Selecao de Midia" com uma grade que le a sua propria Biblioteca (miniaturas, busca, filtro por data e por pasta). A escolha do que e protegido passa a ser feita dentro do wp-admin, sem enviar as imagens para fora do servidor.

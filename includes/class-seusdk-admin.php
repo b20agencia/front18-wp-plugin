@@ -11,7 +11,6 @@ class Front18_Admin {
         add_action( 'admin_head', array( $this, 'fix_menu_icon_size' ) );
         
         // AJAX Endpoints
-        add_action( 'wp_ajax_front18_search_posts', array( $this, 'ajax_search_posts' ) );
         add_action( 'wp_ajax_front18_sync_now', array( $this, 'ajax_sync_now' ) );
 
         // Seleção de mídia dentro do wp-admin (lê a Biblioteca local; salva e empurra para o SaaS)
@@ -78,146 +77,130 @@ class Front18_Admin {
     public function enqueue_admin_scripts( $hook ) {
         if ( 'toplevel_page_front18-integration' !== $hook ) return;
 
-        // Select2 for beautiful multi-selection
+        // jQuery para as abas, a grade de mídia e o botão de sincronizar. O antigo Select2 (via CDN
+        // externo) saiu junto com o seletor de posts — a proteção agora vem da Seleção de Mídia.
         wp_enqueue_script( 'jquery' );
-        wp_enqueue_style( 'select2', 'https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css' );
-        wp_enqueue_script( 'select2', 'https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js', array('jquery'), '4.1.0', true );
 
-        wp_localize_script( 'select2', 'front18_ajax', array(
+        wp_localize_script( 'jquery', 'front18_ajax', array(
             'ajaxurl' => admin_url( 'admin-ajax.php' ),
             'nonce'   => wp_create_nonce( 'front18_admin_nonce' )
         ));
 
+        // Painel claro, amplo, nativo-moderno. Paleta e tipografia de sistema (nada carregado de fora).
         wp_add_inline_style( 'wp-admin', '
-            .front18-admin-wrap { max-width: 850px; margin: 20px auto; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-            .front18-glass-panel { background: #0f172a; border-radius: 16px; padding: 30px; box-shadow: 0 20px 40px rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.05); color: #f8fafc; position: relative; overflow: hidden; }
-            .front18-glass-panel::before { content: ""; position: absolute; top: -100px; right: -100px; width: 300px; height: 300px; background: radial-gradient(circle, rgba(59,130,246,0.15) 0%, rgba(0,0,0,0) 70%); border-radius: 50%; pointer-events: none; }
+            .front18-admin-wrap { max-width: 1120px; margin: 22px 20px 60px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: #14171c; }
+            .front18-glass-panel { background: transparent; padding: 0; border: none; box-shadow: none; color: #14171c; }
 
-            .front18-header { text-align: center; margin-bottom: 25px; }
-            .front18-header h1 { font-size: 32px; font-weight: 800; background: linear-gradient(135deg, #f87171, #f43f5e); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin: 0 0 10px; border:none; padding:0; line-height:1.2; }
-            .front18-header p { font-size: 15px; color: #94a3b8; margin: 0; }
+            /* App bar (logo + status) */
+            .front18-appbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; background: #fff; border: 1px solid #e4e7ec; border-radius: 14px; box-shadow: 0 1px 2px rgba(16,24,40,.05); padding: 16px 22px; margin-bottom: 18px; flex-wrap: wrap; }
+            .front18-brand { display: flex; align-items: center; }
+            .front18-logo { height: 40px; width: auto; display: block; }
 
-            /* Status Badge */
-            .front18-status-box { text-align: center; margin-bottom: 30px; }
-            .front18-badge { display: inline-flex; align-items: center; gap: 8px; padding: 10px 20px; border-radius: 40px; font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; }
-            .badge-on  { background: rgba(16,185,129,0.1);  color: #34d399; border: 1px solid rgba(16,185,129,0.2);  box-shadow: 0 0 15px rgba(16,185,129,0.1); }
-            .badge-off { background: rgba(100,116,139,0.1); color: #94a3b8; border: 1px solid rgba(100,116,139,0.2); }
-            .badge-err { background: rgba(239,68,68,0.1);   color: #f87171; border: 1px solid rgba(239,68,68,0.2);   box-shadow: 0 0 15px rgba(239,68,68,0.1); }
-
-            /* Cards */
-            .front18-card { background: rgba(30,41,59,0.5); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 25px; margin-bottom: 25px; transition: transform 0.2s, box-shadow 0.2s; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
-            .front18-card:hover { border-color: rgba(255,255,255,0.1); box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
-            .front18-card h2 { margin: 0 0 5px; font-size: 18px; font-weight: 600; color: #f8fafc; border: none; padding: 0; }
-            .front18-card .card-desc { margin: 0 0 20px; color: #94a3b8; font-size: 13px; }
-
-            .front18-row { display: flex; align-items: center; justify-content: space-between; padding: 15px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
-            .front18-row:last-child { border-bottom: none; padding-bottom: 0; }
-            .front18-row-focus { background: rgba(15,23,42,0.5); padding: 15px; border-radius: 8px; margin-bottom: 10px; border: 1px solid rgba(244,63,94,0.1); }
-            .front18-col { flex: 1; padding-right: 20px; }
-            .front18-row-title { font-weight: 600; font-size: 15px; color: #e2e8f0; }
-            .front18-row-desc  { font-size: 13px; color: #64748b; margin-top: 4px; line-height: 1.5; }
-
-            /* Status Grid (card proteção atual) */
-            .front18-status-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-top: 5px; }
-            .front18-stat-cell { background: rgba(15,23,42,0.7); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; padding: 14px 16px; text-align: center; }
-            .front18-stat-value { font-size: 22px; font-weight: 800; color: #f8fafc; line-height: 1; }
-            .front18-stat-label { font-size: 11px; color: #64748b; margin-top: 5px; text-transform: uppercase; letter-spacing: 0.5px; }
-
-            /* Shortcodes */
-            .front18-shortcode-block { background: rgba(15,23,42,0.7); border: 1px solid rgba(99,102,241,0.25); border-radius: 8px; padding: 14px 18px; margin-bottom: 12px; }
-            .front18-shortcode-block code { display: block; font-family: monospace; font-size: 13px; color: #a5b4fc; margin-bottom: 6px; }
-            .front18-shortcode-block small { color: #64748b; font-size: 12px; line-height: 1.5; }
-
-            /* Toggles */
-            .front18-switch { position: relative; display: inline-block; width: 50px; height: 26px; flex-shrink: 0; }
-            .front18-switch input { opacity: 0; width: 0; height: 0; }
-            .front18-slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(100,116,139,0.3); transition: .4s; border-radius: 30px; border: 1px solid rgba(255,255,255,0.05); }
-            .front18-slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: #94a3b8; transition: .4s cubic-bezier(0.175,0.885,0.32,1.275); border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
-            .front18-switch input:checked + .front18-slider { background-color: #f43f5e; border-color: #f43f5e; box-shadow: 0 0 10px rgba(244,63,94,0.3); }
-            .front18-switch input:checked + .front18-slider:before { transform: translateX(24px); background-color: #fff; }
-
-            /* Inputs */
-            .front18-input { width: 100%; background: rgba(15,23,42,0.8); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 12px 16px; font-size: 14px; color: #f8fafc; font-family: monospace; transition: all 0.3s; box-shadow: inset 0 2px 4px rgba(0,0,0,0.1); }
-            .front18-input:focus { border-color: #f43f5e; box-shadow: 0 0 0 3px rgba(244,63,94,0.2), inset 0 2px 4px rgba(0,0,0,0.1); outline: none; }
-            .front18-input::placeholder { color: #475569; }
-
-            /* Select2 Dark */
-            .select2-container--default .select2-selection--multiple { background-color: rgba(15,23,42,0.8) !important; border: 1px solid rgba(255,255,255,0.1) !important; border-radius: 8px !important; min-height: 44px !important; padding: 2px 8px !important; }
-            .select2-container--default.select2-container--focus .select2-selection--multiple { border-color: #f43f5e !important; }
-            .select2-container--default .select2-selection--multiple .select2-selection__choice { background-color: #1e293b !important; border: 1px solid rgba(255,255,255,0.1) !important; color: #e2e8f0 !important; border-radius: 4px !important; padding: 4px 8px !important; margin-top: 6px !important; }
-            .select2-container--default .select2-selection--multiple .select2-selection__choice__remove { color: #ef4444 !important; margin-right: 5px !important; border-right: none !important; }
-            .select2-dropdown { background-color: #1e293b !important; border: 1px solid rgba(255,255,255,0.1) !important; color: #e2e8f0 !important; border-radius: 8px !important; box-shadow: 0 10px 25px rgba(0,0,0,0.5) !important; }
-            .select2-container--default .select2-results__option--highlighted.select2-results__option--selectable { background-color: #f43f5e !important; color: white !important; }
-            .select2-container--default .select2-search--inline .select2-search__field { color: #f8fafc !important; margin-top: 8px !important; font-family: inherit; }
-
-            /* Debug */
-            .front18-debug-details summary { cursor: pointer; font-weight: 600; color: #94a3b8; outline: none; padding: 15px; background: rgba(255,255,255,0.02); border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); transition: background 0.3s; }
-            .front18-debug-details summary:hover { background: rgba(255,255,255,0.05); color: #f8fafc; }
-
-            /* Submit */
-            .front18-btn-submit { background: linear-gradient(135deg, #f43f5e, #be123c); color: white; border: none; padding: 14px 40px; font-size: 16px; font-weight: 700; border-radius: 8px; cursor: pointer; transition: all 0.3s; box-shadow: 0 4px 15px rgba(244,63,94,0.3); display: inline-flex; align-items: center; gap: 8px; text-transform: uppercase; letter-spacing: 1px; }
-            .front18-btn-submit:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(244,63,94,0.4); color: white; }
+            /* Status pill */
+            .front18-badge { display: inline-flex; align-items: center; gap: 9px; padding: 8px 16px; border-radius: 999px; font-weight: 600; font-size: 13px; }
+            .front18-badge::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+            .badge-on  { background: #e9f9f0; color: #0a7a44; border: 1px solid #b7e8cc; }
+            .badge-off { background: #f1f3f6; color: #5a6472; border: 1px solid #e0e4ea; }
+            .badge-err { background: #fdecee; color: #c81e3a; border: 1px solid #f6cdd4; }
 
             /* Abas */
-            .front18-nav-tabs { border-bottom: 1px solid rgba(255,255,255,0.08); margin: 0 0 25px; padding-left: 0; }
-            .front18-nav-tabs .nav-tab { background: transparent; border: none; border-bottom: 2px solid transparent; color: #94a3b8; font-size: 14px; font-weight: 600; padding: 12px 18px; margin: 0 4px -1px 0; border-radius: 0; transition: color 0.2s, border-color 0.2s; }
-            .front18-nav-tabs .nav-tab:hover { color: #f8fafc; background: transparent; }
-            .front18-nav-tabs .nav-tab-active, .front18-nav-tabs .nav-tab-active:hover, .front18-nav-tabs .nav-tab-active:focus { color: #f8fafc; border-bottom-color: #f43f5e; background: transparent; box-shadow: none; }
-            .front18-nav-tabs .nav-tab:focus { box-shadow: none; outline: 2px solid rgba(244,63,94,0.5); outline-offset: 2px; }
+            .front18-nav-tabs { border-bottom: 1px solid #e4e7ec; margin: 0 0 26px; padding: 0 4px; display: flex; flex-wrap: wrap; gap: 2px; }
+            .front18-nav-tabs .nav-tab { background: transparent; border: none; border-bottom: 2.5px solid transparent; color: #5a6472; font-size: 14.5px; font-weight: 600; padding: 13px 16px; margin: 0 2px -1px 0; border-radius: 0; transition: color .15s, border-color .15s; }
+            .front18-nav-tabs .nav-tab:hover { color: #14171c; background: transparent; }
+            .front18-nav-tabs .nav-tab-active, .front18-nav-tabs .nav-tab-active:hover, .front18-nav-tabs .nav-tab-active:focus { color: #d21b3c; border-bottom-color: #f2354f; background: transparent; box-shadow: none; }
+            .front18-nav-tabs .nav-tab:focus { box-shadow: none; outline: 2px solid rgba(242,53,79,.4); outline-offset: 2px; }
             .front18-tabpanel[hidden] { display: none; }
 
-            /* Seleção de mídia */
-            .front18-scope-choice { display: flex; gap: 12px; margin: 20px 0; flex-wrap: wrap; }
-            .front18-scope-opt { flex: 1; min-width: 220px; display: flex; align-items: flex-start; gap: 10px; padding: 14px 16px; border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; cursor: pointer; transition: border-color 0.2s, background 0.2s; }
-            .front18-scope-opt:hover { border-color: rgba(244,63,94,0.4); }
-            .front18-scope-opt input { margin-top: 3px; accent-color: #f43f5e; }
+            /* Cards */
+            .front18-card { background: #fff; border: 1px solid #e4e7ec; border-radius: 14px; padding: 24px; margin-bottom: 20px; box-shadow: 0 1px 2px rgba(16,24,40,.04), 0 8px 24px rgba(16,24,40,.05); }
+            .front18-card h2 { margin: 0 0 6px; font-size: 20px; font-weight: 800; letter-spacing: -.01em; color: #14171c; border: none; padding: 0; }
+            .front18-card .card-desc { margin: 0 0 20px; color: #5a6472; font-size: 14px; line-height: 1.55; }
+
+            .front18-row { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 16px 0; border-bottom: 1px solid #eef0f3; }
+            .front18-row:last-child { border-bottom: none; padding-bottom: 0; }
+            .front18-row-focus { background: #f8f9fb; padding: 16px; border-radius: 10px; margin-bottom: 10px; border: 1px solid #e4e7ec; }
+            .front18-col { flex: 1; padding-right: 16px; }
+            .front18-row-title { font-weight: 650; font-size: 14.5px; color: #14171c; }
+            .front18-row-desc  { font-size: 13px; color: #5a6472; margin-top: 4px; line-height: 1.5; }
+
+            /* Highlight "o que o visitante ve" */
+            .front18-vis-box { display: flex; align-items: flex-start; gap: 14px; flex-wrap: wrap; justify-content: space-between; background: #fff0f3; border: 1px solid #ffd4dd; border-radius: 12px; padding: 16px 18px; margin-bottom: 14px; }
+            .front18-vis-box .vis-eyebrow { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: #d21b3c; font-weight: 700; margin-bottom: 4px; }
+            .front18-vis-box .vis-text { font-size: 14.5px; color: #14171c; line-height: 1.5; }
+
+            /* Status Grid */
+            .front18-status-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-top: 6px; }
+            .front18-stat-cell { background: #f8f9fb; border: 1px solid #e4e7ec; border-radius: 11px; padding: 15px 16px; text-align: center; }
+            .front18-stat-value { font-size: 22px; font-weight: 800; color: #14171c; line-height: 1.1; }
+            .front18-stat-label { font-size: 11px; color: #7b8494; margin-top: 6px; text-transform: uppercase; letter-spacing: .04em; }
+
+            /* Toggles */
+            .front18-switch { position: relative; display: inline-block; width: 46px; height: 26px; flex-shrink: 0; }
+            .front18-switch input { opacity: 0; width: 0; height: 0; }
+            .front18-slider { position: absolute; cursor: pointer; inset: 0; background-color: #d3d8e0; transition: .3s; border-radius: 30px; }
+            .front18-slider:before { position: absolute; content: ""; height: 20px; width: 20px; left: 3px; bottom: 3px; background-color: #fff; transition: .25s; border-radius: 50%; box-shadow: 0 1px 3px rgba(16,24,40,.25); }
+            .front18-switch input:checked + .front18-slider { background-color: #f2354f; }
+            .front18-switch input:checked + .front18-slider:before { transform: translateX(20px); }
+
+            /* Inputs */
+            .front18-input { width: 100%; background: #fff; border: 1px solid #d3d8e0; border-radius: 9px; padding: 10px 13px; font-size: 14px; color: #14171c; transition: border-color .15s, box-shadow .15s; }
+            .front18-input:focus { border-color: #f2354f; box-shadow: 0 0 0 3px rgba(242,53,79,.12); outline: none; }
+            .front18-input::placeholder { color: #98a1b0; }
+            select.front18-input { background: #fff; }
+
+            /* Debug/details */
+            .front18-debug-details { margin-bottom: 20px; }
+            .front18-debug-details summary { cursor: pointer; font-weight: 600; color: #5a6472; outline: none; padding: 14px 16px; background: #f8f9fb; border-radius: 10px; border: 1px solid #e4e7ec; transition: background .2s; }
+            .front18-debug-details summary:hover { background: #f1f3f6; color: #14171c; }
+
+            /* Botao primario */
+            .front18-btn-submit { background: linear-gradient(150deg, #f2354f, #d21b3c); color: #fff; border: none; padding: 12px 26px; font-size: 14.5px; font-weight: 700; border-radius: 9px; cursor: pointer; transition: filter .15s, transform .05s, box-shadow .15s; box-shadow: 0 4px 14px rgba(210,27,60,.26); display: inline-flex; align-items: center; gap: 8px; }
+            .front18-btn-submit:hover { filter: brightness(1.05); color: #fff; box-shadow: 0 6px 18px rgba(210,27,60,.32); }
+            .front18-btn-submit:active { transform: translateY(1px); }
+
+            /* Botao secundario */
+            .front18-btn-ghost { background: #fff; color: #14171c; border: 1px solid #d3d8e0; border-radius: 9px; padding: 9px 16px; font-size: 13.5px; font-weight: 600; cursor: pointer; transition: background .15s, border-color .15s; }
+            .front18-btn-ghost:hover { background: #f8f9fb; border-color: #98a1b0; }
+
+            /* Escopo */
+            .front18-scope-choice { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 20px 0; }
+            .front18-scope-opt { display: flex; align-items: flex-start; gap: 12px; padding: 16px 18px; border: 1.5px solid #e4e7ec; border-radius: 11px; cursor: pointer; transition: border-color .15s, background .15s, box-shadow .15s; }
+            .front18-scope-opt:hover { border-color: #d3d8e0; }
+            .front18-scope-opt:has(input:checked) { border-color: #f2354f; background: #fff0f3; box-shadow: 0 0 0 3px rgba(242,53,79,.08); }
+            .front18-scope-opt input { margin-top: 3px; accent-color: #f2354f; width: 17px; height: 17px; }
             .front18-scope-opt span { display: flex; flex-direction: column; gap: 3px; }
-            .front18-scope-opt strong { color: #f8fafc; font-size: 14px; }
-            .front18-scope-opt small { color: #94a3b8; font-size: 12px; line-height: 1.4; }
-            .front18-media-toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; margin-bottom: 16px; }
-            .front18-media-bulk { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; }
-            .front18-media-counter { color: #94a3b8; font-size: 13px; }
-            .front18-media-counter b { color: #f8fafc; }
-            .front18-btn-ghost { background: rgba(255,255,255,0.04); color: #e2e8f0; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 9px 16px; font-size: 13px; font-weight: 600; cursor: pointer; transition: background 0.2s, border-color 0.2s; }
-            .front18-btn-ghost:hover { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.2); color: #fff; }
-            .front18-media-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 10px; }
-            .front18-media-item { position: relative; border-radius: 8px; overflow: hidden; cursor: pointer; border: 2px solid transparent; background: rgba(255,255,255,0.03); aspect-ratio: 1 / 1; }
+            .front18-scope-opt strong { color: #14171c; font-size: 14.5px; }
+            .front18-scope-opt:has(input:checked) strong { color: #d21b3c; }
+            .front18-scope-opt small { color: #5a6472; font-size: 12.5px; line-height: 1.45; }
+
+            /* Grade de midia */
+            .front18-media-toolbar { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; margin-bottom: 16px; }
+            .front18-media-bulk { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 14px; }
+            .front18-media-counter { color: #5a6472; font-size: 13.5px; }
+            .front18-media-counter b { color: #14171c; font-variant-numeric: tabular-nums; }
+            .front18-media-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 12px; }
+            .front18-media-item { position: relative; border-radius: 11px; overflow: hidden; cursor: pointer; border: 2px solid transparent; background: #f1f3f6; aspect-ratio: 1 / 1; box-shadow: 0 1px 2px rgba(16,24,40,.06); transition: transform .12s, box-shadow .12s; }
+            .front18-media-item:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(16,24,40,.10); }
             .front18-media-item img { width: 100%; height: 100%; object-fit: cover; display: block; }
-            .front18-media-item .f18-check { position: absolute; top: 6px; left: 6px; width: 20px; height: 20px; border-radius: 5px; background: rgba(15,23,42,0.7); border: 2px solid rgba(255,255,255,0.6); display: flex; align-items: center; justify-content: center; }
+            .front18-media-item .f18-check { position: absolute; top: 7px; left: 7px; width: 22px; height: 22px; border-radius: 6px; background: rgba(255,255,255,.82); border: 2px solid #fff; box-shadow: 0 1px 3px rgba(16,24,40,.25); display: flex; align-items: center; justify-content: center; }
             .front18-media-item .f18-check::after { content: ""; width: 5px; height: 9px; border: solid transparent; border-width: 0 2px 2px 0; transform: rotate(45deg); margin-top: -2px; }
-            .front18-media-item.f18-on { border-color: #f43f5e; }
-            .front18-media-item.f18-on .f18-check { background: #f43f5e; border-color: #f43f5e; }
+            .front18-media-item.f18-on { border-color: #f2354f; }
+            .front18-media-item.f18-on .f18-check { background: #f2354f; border-color: #f2354f; }
             .front18-media-item.f18-on .f18-check::after { border-color: #fff; }
-            .front18-media-item .f18-title { position: absolute; bottom: 0; left: 0; right: 0; padding: 4px 6px; font-size: 10px; color: #fff; background: linear-gradient(transparent, rgba(0,0,0,0.75)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-            .front18-media-empty { text-align: center; color: #94a3b8; padding: 30px; }
-            .front18-media-savebar { display: flex; align-items: center; gap: 14px; margin-top: 24px; border-top: 1px solid rgba(255,255,255,0.07); padding-top: 20px; }
-            .front18-media-status { font-size: 13px; color: #94a3b8; }
+            .front18-media-item .f18-title { position: absolute; bottom: 0; left: 0; right: 0; padding: 14px 8px 6px; font-size: 10.5px; color: #fff; background: linear-gradient(transparent, rgba(0,0,0,.62)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+            .front18-media-empty { text-align: center; color: #7b8494; padding: 34px; }
+            .front18-media-savebar { display: flex; align-items: center; gap: 16px; margin-top: 24px; border-top: 1px solid #eef0f3; padding-top: 20px; }
+            .front18-media-status { font-size: 13.5px; color: #5a6472; }
+            .front18-media-status.ok { color: #0a7a44; font-weight: 600; }
+
+            /* Nota (aviso leve) */
+            .front18-note { display: flex; gap: 12px; align-items: flex-start; background: #f8f9fb; border: 1px solid #e4e7ec; border-radius: 10px; padding: 14px 16px; font-size: 13px; color: #5a6472; line-height: 1.55; margin-bottom: 6px; }
+            .front18-note b { color: #14171c; }
+
+            .front18-savebar-main { text-align: right; margin-top: 30px; border-top: 1px solid #e4e7ec; padding-top: 22px; }
+
+            @media (max-width: 720px) { .front18-scope-choice { grid-template-columns: 1fr; } }
         ' );
-    }
-
-    public function ajax_search_posts() {
-        check_ajax_referer( 'front18_admin_nonce', 'security' );
-        if ( ! current_user_can( 'manage_options' ) ) wp_die();
-
-        $term = isset($_GET['q']) ? sanitize_text_field($_GET['q']) : '';
-        
-        $args = array(
-            's' => $term,
-            'post_type' => 'any', // Search any post type (posts, pages, products)
-            'post_status' => 'publish',
-            'posts_per_page' => 10,
-        );
-        $query = new WP_Query($args);
-        $results = array();
-        
-        if ($query->have_posts()) {
-            foreach ($query->posts as $p) {
-                $type_obj = get_post_type_object($p->post_type);
-                $type_name = $type_obj ? $type_obj->labels->singular_name : $p->post_type;
-                $results[] = array('id' => $p->ID, 'text' => $p->post_title . ' (' . $type_name . ')');
-            }
-        }
-        wp_send_json($results);
     }
 
     public function ajax_sync_now() {
@@ -240,21 +223,6 @@ class Front18_Admin {
             'message' => __( 'Recarregado! (Aguardando PUSH do Painel SaaS):', 'front18' ), 
             'time' => wp_date('d/m/Y H:i:s', strtotime($time)) 
         ) );
-    }
-
-    private function get_post_titles_for_select($comma_ids) {
-        $arr = array();
-        if (empty($comma_ids)) return $arr;
-        $ids = explode(',', $comma_ids);
-        foreach ($ids as $id) {
-            $p = get_post($id);
-            if ($p) {
-                $type_obj = get_post_type_object($p->post_type);
-                $type_name = $type_obj ? $type_obj->labels->singular_name : $p->post_type;
-                $arr[$id] = $p->post_title . ' (' . $type_name . ')';
-            }
-        }
-        return $arr;
     }
 
     // =========================================================================
@@ -386,19 +354,13 @@ class Front18_Admin {
         $enabled       = get_option( 'front18_enabled', false );
         $api_key       = get_option( 'front18_api_key', '' );
         
-        // Sync & Scope settings
-        $include_ids   = get_option( 'front18_include_ids', '' );
-        $exclude_ids   = get_option( 'front18_exclude_ids', '' );
         $last_sync     = get_option( 'front18_last_sync', false );
-        
-        // Advanced
+
+        // Avançado
         $debug_mode    = get_option( 'front18_debug_mode', false );
         $sdk_url       = get_option( 'front18_sdk_url', 'https://front18.com/public/sdk/front18.js' );
         $global_object = get_option( 'front18_global_object', 'Front18' );
         $token_key     = get_option( 'front18_token_key', 'api-key' );
-
-        $inc_posts = $this->get_post_titles_for_select($include_ids);
-        $exc_posts = $this->get_post_titles_for_select($exclude_ids);
 
         // Status Badge Logic
         if ( $enabled && !empty($api_key) ) {
@@ -415,13 +377,11 @@ class Front18_Admin {
         ?>
         <div class="wrap front18-admin-wrap">
             <div class="front18-glass-panel">
-                <div class="front18-header">
-                    <img src="<?php echo esc_url( FRONT18_PLUGIN_URL . 'assets/logo.png' ); ?>" alt="Front18 Security Logo" style="max-height: 55px; margin-bottom: 20px; display: block; margin-left: auto; margin-right: auto;" />
-                    <p><?php esc_html_e( 'O MasterHub corporativo atuando dentro do seu WordPress. Total opacidade antes mesmo da página renderizar.', 'front18' ); ?></p>
-                </div>
-    
-                <div class="front18-status-box">
-                    <div class="front18-badge <?php echo esc_attr($badge_class); ?>"><?php echo esc_html($badge_text); ?></div>
+                <div class="front18-appbar">
+                    <div class="front18-brand">
+                        <img class="front18-logo" src="<?php echo esc_url( FRONT18_PLUGIN_URL . 'assets/logo.png' ); ?>" alt="Front18 Security Integration" />
+                    </div>
+                    <span class="front18-badge <?php echo esc_attr($badge_class); ?>"><?php echo esc_html($badge_text); ?></span>
                 </div>
 
             <?php settings_errors('front18_options_group'); ?>
@@ -446,8 +406,8 @@ class Front18_Admin {
                 <div class="front18-tabpanel" data-panel="conexao"<?php echo $abaAtiva !== 'conexao' ? ' hidden' : ''; ?>>
                 <!-- 1 & 2. ATIVAÇÃO E CONFIG BÁSICA -->
                 <div class="front18-card">
-                    <h2><?php esc_html_e( '1. Configuração Principal', 'front18' ); ?></h2>
-                    <p class="card-desc"><?php esc_html_e( 'Ative o motor de defesa e conecte com o seu painel do Front18.', 'front18' ); ?></p>
+                    <h2><?php esc_html_e( 'Ligar e conectar', 'front18' ); ?></h2>
+                    <p class="card-desc"><?php esc_html_e( 'Ative a proteção e cole a chave do seu painel Front18. Depois disso, o resto acontece sozinho.', 'front18' ); ?></p>
 
                     <div class="front18-row">
                         <div class="front18-col">
@@ -476,21 +436,21 @@ class Front18_Admin {
 
                 <!-- 2. SINCRONIZAÇÃO SAAS -->
                 <div class="front18-card">
-                    <h2><?php esc_html_e( '2. Nuvem Front18 (SaaS)', 'front18' ); ?></h2>
+                    <h2><?php esc_html_e( 'Nuvem Front18', 'front18' ); ?></h2>
                     <p class="card-desc"><?php esc_html_e( 'As regras de acesso (Global, Produtos, Home) são controladas 100% no seu painel SaaS.', 'front18' ); ?></p>
 
-                    <div class="front18-row front18-row-focus" style="border-color: rgba(52, 211, 153, 0.2);">
+                    <div class="front18-row front18-row-focus">
                         <div class="front18-col">
-                            <div class="front18-row-title" style="color:#f8fafc;"><?php esc_html_e( 'Status da Sincronização', 'front18' ); ?></div>
+                            <div class="front18-row-title"><?php esc_html_e( 'Status da Sincronização', 'front18' ); ?></div>
                             <div class="front18-row-desc" id="front18_sync_status">
                                 <?php if ($last_sync): ?>
-                                    <span style="color:#34d399;">Última sincronização: <b id="front18_sync_time"><?php echo esc_html(wp_date('d/m/Y H:i:s', strtotime($last_sync))); ?></b></span>
+                                    <span style="color:#0a7a44;">Última sincronização: <b id="front18_sync_time"><?php echo esc_html(wp_date('d/m/Y H:i:s', strtotime($last_sync))); ?></b></span>
                                 <?php else: ?>
-                                    <span style="color:#fbbf24;">Aguardando primeira sincronização com a sua API Key.</span>
+                                    <span style="color:#b7791f;">Aguardando primeira sincronização com a sua API Key.</span>
                                 <?php endif; ?>
                             </div>
                         </div>
-                        <button type="button" id="front18_btn_sync" class="front18-btn-submit" style="padding: 10px 20px; font-size: 13px; background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(52, 211, 153, 0.3); color: #34d399; box-shadow: none;">
+                        <button type="button" id="front18_btn_sync" class="front18-btn-ghost">
                             <?php esc_html_e( 'Sincronizar Agora', 'front18' ); ?>
                         </button>
                     </div>
@@ -534,27 +494,27 @@ class Front18_Admin {
                 ?>
                 <?php if ( $last_sync ) : ?>
                 <div class="front18-card" style="border-color: rgba(99,102,241,0.2);">
-                    <h2><?php esc_html_e( '3. Proteção Ativa Agora', 'front18' ); ?></h2>
+                    <h2><?php esc_html_e( 'Proteção ativa agora', 'front18' ); ?></h2>
                     <p class="card-desc"><?php esc_html_e( 'Resumo em tempo real das configurações que o SaaS está aplicando neste site.', 'front18' ); ?></p>
 
-                    <div style="display:flex; align-items:flex-start; gap:12px; flex-wrap:wrap; justify-content:space-between; background:rgba(99,102,241,0.08); border:1px solid rgba(99,102,241,0.25); border-radius:12px; padding:14px 16px; margin-bottom:16px;">
+                    <div class="front18-vis-box">
                         <div style="flex:1; min-width:240px;">
-                            <div style="font-size:11px; text-transform:uppercase; letter-spacing:.5px; color:#a5b4fc; font-weight:700; margin-bottom:4px;"><?php esc_html_e( 'O que o visitante vê', 'front18' ); ?></div>
-                            <div style="font-size:14px; color:#e2e8f0; line-height:1.5;"><?php echo esc_html( $resumo_efeito ); ?></div>
+                            <div class="vis-eyebrow"><?php esc_html_e( 'O que o visitante vê', 'front18' ); ?></div>
+                            <div class="vis-text"><?php echo esc_html( $resumo_efeito ); ?></div>
                         </div>
-                        <a href="<?php echo esc_url( home_url( '/' ) ); ?>" target="_blank" rel="noopener" title="<?php esc_attr_e( 'Abre a home numa aba nova. Para ver o efeito (blur/portao), use uma janela ANONIMA — se voce ja verificou a idade neste navegador, o site mostra tudo liberado.', 'front18' ); ?>" style="white-space:nowrap; background:rgba(15,23,42,0.8); border:1px solid rgba(52,211,153,0.35); color:#34d399; padding:10px 16px; border-radius:8px; font-weight:600; font-size:13px; text-decoration:none;">
+                        <a href="<?php echo esc_url( home_url( '/' ) ); ?>" target="_blank" rel="noopener" class="front18-btn-ghost" title="<?php esc_attr_e( 'Abre a home numa aba nova. Para ver o efeito (blur/portao), use uma janela ANONIMA — se voce ja verificou a idade neste navegador, o site mostra tudo liberado.', 'front18' ); ?>" style="white-space:nowrap; text-decoration:none;">
                             <?php esc_html_e( 'Ver como visitante', 'front18' ); ?>
                         </a>
                     </div>
-                    <p style="font-size:11px; color:#94a3b8; margin:-8px 0 16px;"><?php esc_html_e( 'Dica: teste sempre numa janela anônima. No seu navegador normal, se você já passou pela verificação, o site te mostra tudo liberado — isso é o comportamento correto, não uma falha.', 'front18' ); ?></p>
+                    <p class="front18-row-desc" style="margin:-6px 0 16px;"><?php esc_html_e( 'Dica: teste sempre numa janela anônima. No seu navegador normal, se você já passou pela verificação, o site te mostra tudo liberado — isso é o comportamento correto, não uma falha.', 'front18' ); ?></p>
 
                     <div class="front18-status-grid">
                         <div class="front18-stat-cell">
-                            <div class="front18-stat-value" style="font-size:15px;color:#a5b4fc;"><?php echo esc_html( $mode_label ); ?></div>
+                            <div class="front18-stat-value" style="font-size:15px;"><?php echo esc_html( $mode_label ); ?></div>
                             <div class="front18-stat-label"><?php esc_html_e( 'Modo', 'front18' ); ?></div>
                         </div>
                         <div class="front18-stat-cell">
-                            <div class="front18-stat-value" style="color:#f87171;"><?php echo esc_html( $level ); ?></div>
+                            <div class="front18-stat-value"><?php echo esc_html( $level ); ?></div>
                             <div class="front18-stat-label"><?php echo esc_html( $level_label ); ?> &mdash; <?php esc_html_e( 'Nível', 'front18' ); ?></div>
                         </div>
                         <div class="front18-stat-cell">
@@ -562,7 +522,7 @@ class Front18_Admin {
                             <div class="front18-stat-label"><?php esc_html_e( 'Mídias protegidas', 'front18' ); ?></div>
                         </div>
                         <div class="front18-stat-cell" style="grid-column: span 2;">
-                            <div class="front18-stat-value" style="font-size:13px; color:#94a3b8;"><?php echo esc_html( $scope_str ); ?></div>
+                            <div class="front18-stat-value" style="font-size:13px; color:#5a6472;"><?php echo esc_html( $scope_str ); ?></div>
                             <div class="front18-stat-label"><?php esc_html_e( 'Escopo', 'front18' ); ?></div>
                         </div>
                     </div>
@@ -635,55 +595,12 @@ class Front18_Admin {
                 </div><!-- /painel midia -->
 
                 <div class="front18-tabpanel" data-panel="avancado" hidden>
-                <!-- 4. SHORTCODES -->
-                <details class="front18-debug-details">
-                    <summary><?php esc_html_e( 'Como proteger partes específicas da página (Shortcodes)', 'front18' ); ?></summary>
-                    <div class="front18-card" style="margin-top: 15px;">
-                        <p class="card-desc" style="margin-bottom: 20px; line-height: 1.7;">
-                            <?php esc_html_e( 'Por padrão, o Front18 protege a página inteira quando ativado. Mas às vezes você quer proteger apenas um bloco — uma foto, um vídeo, uma seção de conteúdo premium. Para isso, use os recursos abaixo diretamente no editor de páginas.', 'front18' ); ?>
-                        </p>
-
-                        <div class="front18-shortcode-block">
-                            <div style="display:flex; align-items:center; gap:10px; margin-bottom:6px;">
-                                <code>[front18]</code>
-                                <span style="background: rgba(99,102,241,0.15); color:#a5b4fc; font-size:11px; padding:2px 8px; border-radius:20px; font-weight:600;"><?php esc_html_e( 'Avançado', 'front18' ); ?></span>
-                            </div>
-                            <small>
-                                <strong><?php esc_html_e( 'Quando usar:', 'front18' ); ?></strong>
-                                <?php esc_html_e( 'Quando você quer inserir o ponto de controle do SDK em um local exato da página — por exemplo, dentro de um template PHP ou construtor de página personalizado. Na maioria dos casos você não precisa deste shortcode.', 'front18' ); ?>
-                            </small>
-                        </div>
-
-                        <div class="front18-shortcode-block">
-                            <div style="display:flex; align-items:center; gap:10px; margin-bottom:6px;">
-                                <code>[front18_lock]Conteúdo aqui[/front18_lock]</code>
-                                <span style="background: rgba(248,113,113,0.15); color:#fca5a5; font-size:11px; padding:2px 8px; border-radius:20px; font-weight:600;"><?php esc_html_e( 'Mais usado', 'front18' ); ?></span>
-                            </div>
-                            <small>
-                                <strong><?php esc_html_e( 'Quando usar:', 'front18' ); ?></strong>
-                                <?php esc_html_e( 'Para proteger apenas um bloco específico — uma imagem, um vídeo, uma seção de conteúdo premium — sem precisar ativar a proteção global na página inteira. Cole este shortcode no editor Gutenberg ou no editor clássico em volta do conteúdo que deseja proteger.', 'front18' ); ?>
-                            </small>
-                        </div>
-
-                        <div class="front18-shortcode-block">
-                            <div style="display:flex; align-items:center; gap:10px; margin-bottom:6px;">
-                                <code>&lt;div data-front18="locked"&gt;...&lt;/div&gt;</code>
-                                <span style="background: rgba(52,211,153,0.15); color:#6ee7b7; font-size:11px; padding:2px 8px; border-radius:20px; font-weight:600;"><?php esc_html_e( 'Para devs', 'front18' ); ?></span>
-                            </div>
-                            <small>
-                                <strong><?php esc_html_e( 'Quando usar:', 'front18' ); ?></strong>
-                                <?php esc_html_e( 'Tem o mesmo efeito que [front18_lock], mas escrito em HTML puro. Use quando estiver editando um template de tema (.php), um bloco HTML do Gutenberg, ou um construtor de páginas (Elementor, Divi) que não aceita shortcodes aninhados.', 'front18' ); ?>
-                            </small>
-                        </div>
-                    </div>
-                </details>
-
-                <!-- 5. CONFIGURAÇÕES AVANÇADAS -->
+                <!-- CONFIGURAÇÕES AVANÇADAS -->
                 <details class="front18-debug-details">
                     <summary><?php esc_html_e( 'Configurações Avançadas (não altere sem orientação da Front18)', 'front18' ); ?></summary>
                     <div class="front18-card" style="margin-top: 15px;">
 
-                        <p class="card-desc" style="margin-bottom: 20px; line-height: 1.7; color: #fbbf24;">
+                        <p class="card-desc" style="margin-bottom: 20px; line-height: 1.7; color: #b7791f;">
                             <?php esc_html_e( 'Estes campos são preenchidos automaticamente durante a ativação. Só altere se a equipe Front18 solicitar, ou se você estiver usando um ambiente de staging/homologação com URL diferente.', 'front18' ); ?>
                         </p>
 
@@ -718,14 +635,14 @@ class Front18_Admin {
                             </div>
                         </div>
 
-                        <div class="front18-row" style="margin-top:20px; border-top: 1px solid rgba(255,255,255,0.07); padding-top: 20px;">
+                        <div class="front18-row" style="margin-top:20px; border-top: 1px solid #eef0f3; padding-top: 20px;">
                             <div class="front18-col">
                                 <div class="front18-row-title">
                                     <?php esc_html_e( 'Modo Debug (Log no Console do Navegador)', 'front18' ); ?>
                                 </div>
                                 <div class="front18-row-desc">
                                     <?php esc_html_e( 'Quando ativo, o Front18 exibe mensagens detalhadas no Console do navegador (F12 → Aba Console). Use apenas para diagnosticar problemas — nunca deixe ligado em produção, pois expõe informações internas do SDK.', 'front18' ); ?>
-                                    <br><span style="color:#f87171; font-size:11px; margin-top:4px; display:block;"><?php esc_html_e( 'Desligue após o diagnóstico.', 'front18' ); ?></span>
+                                    <br><span style="color:#c81e3a; font-size:11px; margin-top:4px; display:block;"><?php esc_html_e( 'Desligue após o diagnóstico.', 'front18' ); ?></span>
                                 </div>
                             </div>
                             <label class="front18-switch">
@@ -737,9 +654,9 @@ class Front18_Admin {
                 </details>
                 </div><!-- /painel avancado -->
 
-                <div style="text-align: right; margin-top: 35px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 25px;">
+                <div class="front18-savebar-main">
                     <button type="submit" name="submit" id="submit" class="front18-btn-submit">
-                        <?php esc_html_e( 'Salvar Blindagem Mestra', 'front18' ); ?>
+                        <?php esc_html_e( 'Salvar configurações', 'front18' ); ?>
                     </button>
                 </div>
             </form>
@@ -833,6 +750,7 @@ class Front18_Admin {
                         if (sel.has(id)) { sel.delete(id); $(this).removeClass('f18-on'); }
                         else { sel.add(id); $(this).addClass('f18-on'); }
                         updateCount();
+                        $status.text('').removeClass('ok');
                     });
 
                     $('#f18_select_none').on('click', function() {
@@ -861,7 +779,7 @@ class Front18_Admin {
                         var ids = [];
                         sel.forEach(function(id) { ids.push(id); });
                         var $btn = $(this).prop('disabled', true).css('opacity', 0.7);
-                        $status.text('Salvando...');
+                        $status.text('Salvando...').removeClass('ok');
                         $.post(front18_ajax.ajaxurl, {
                             action: 'front18_save_media',
                             security: front18_ajax.nonce,
@@ -874,7 +792,7 @@ class Front18_Admin {
                                 if (push.ok) { msg += ' Aplicado no site.'; }
                                 else if (push.reason === 'sem_canal') { msg += ' Sincronize com o painel Front18 uma vez para publicar no site.'; }
                                 else { msg += ' Aviso: nao foi possivel publicar no site agora.'; }
-                                $status.text(msg);
+                                $status.text(msg).toggleClass('ok', !!push.ok);
                             } else {
                                 $status.text('Falha ao salvar.');
                             }
@@ -894,7 +812,7 @@ class Front18_Admin {
                         security: front18_ajax.nonce
                     }, function(res) {
                         if (res.success) {
-                            $('#front18_sync_status').html('<span style="color:#34d399;">' + res.data.message + ' <b id="front18_sync_time">' + res.data.time + '</b></span>');
+                            $('#front18_sync_status').html('<span style="color:#0a7a44;">' + res.data.message + ' <b id="front18_sync_time">' + res.data.time + '</b></span>');
                         } else {
                             $('#front18_sync_status').html('<span style="color:#ef4444;">' + res.data.message + '</span>');
                         }
@@ -913,7 +831,7 @@ class Front18_Admin {
                     if ($input.attr('type') === 'password') {
                         $input.attr('type', 'text');
                         $icon.html('<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>');
-                        $icon.css('color', '#f8fafc');
+                        $icon.css('color', '#14171c');
                     } else {
                         $input.attr('type', 'password');
                         $icon.html('<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>');
