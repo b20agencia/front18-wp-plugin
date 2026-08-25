@@ -898,6 +898,15 @@ class Front18_Admin {
                     }
 
                     $('#f18_media_save').on('click', function() {
+                        // "So as selecionadas" sem nenhuma imagem marcada deixaria o site SEM protecao —
+                        // por isso o servidor rebaixa para "proteger tudo". Antes isso acontecia calado e
+                        // parecia que o modo "nao salvava". Agora orientamos e NAO salvamos, mantendo a
+                        // escolha do usuario na tela para ele marcar as imagens.
+                        var escopoSel = $('input[name="f18_scope"]:checked').val() || 'all';
+                        if (escopoSel === 'selected_only' && sel.size === 0) {
+                            $status.removeClass('ok').text('Para "proteger só as selecionadas", marque ao menos uma imagem primeiro — clique nas miniaturas abaixo ou use o botão Analisar imagens (IA). Sem nada marcado, o site ficaria sem proteção, então não salvei.');
+                            return;
+                        }
                         var $btn = $(this).prop('disabled', true).css('opacity', 0.7);
                         var ai = ultimaIA ? { analisadas: ultimaIA.analisadas, marcadas: ultimaIA.marcadas, aplicado: true, rigor: ultimaIA.rigor } : null;
                         $.when(f18Salvar(ai)).always(function() { $btn.prop('disabled', false).css('opacity', 1); ultimaIA = null; });
