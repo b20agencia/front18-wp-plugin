@@ -755,6 +755,16 @@ class Front18_Admin {
 
         <script>
             jQuery(document).ready(function($) {
+                // A aba "Selecao de Midia" tem o PROPRIO salvar (AJAX: escopo + selecao). O botao
+                // grande "Salvar configuracoes" submete o formulario de settings do WordPress, que
+                // NAO grava o escopo nem a selecao (nao sao settings registrados) — ele recarrega a
+                // pagina e a escolha "so as selecionadas" se perde, voltando para "proteger tudo".
+                // Por isso a barra grande some quando a aba de midia esta ativa: ali o unico salvar
+                // valido e o "Salvar selecao".
+                function f18SyncSaveBar(alvo) {
+                    $('.front18-savebar-main').toggle(alvo !== 'midia');
+                }
+
                 // Abas
                 $('.front18-nav-tabs .front18-tab').on('click', function(e) {
                     e.preventDefault();
@@ -763,6 +773,19 @@ class Front18_Admin {
                     $(this).addClass('nav-tab-active');
                     $('.front18-tabpanel').prop('hidden', true);
                     $('.front18-tabpanel[data-panel="' + alvo + '"]').prop('hidden', false);
+                    f18SyncSaveBar(alvo);
+                });
+                f18SyncSaveBar( ( $('.front18-nav-tabs .front18-tab.nav-tab-active').data('tab') || 'conexao' ) );
+
+                // Rede de seguranca: se o formulario for submetido com a aba de midia ativa (ex.: Enter
+                // num campo de busca), nao deixamos o settings recarregar e perder a selecao —
+                // redirecionamos para o salvar proprio da midia.
+                $('form[action="options.php"]').on('submit', function(e) {
+                    var alvo = $('.front18-nav-tabs .front18-tab.nav-tab-active').data('tab');
+                    if (alvo === 'midia') {
+                        e.preventDefault();
+                        $('#f18_media_save').trigger('click');
+                    }
                 });
 
                 // Seleção de mídia (grade lê a Biblioteca local; salva e empurra para o SaaS)

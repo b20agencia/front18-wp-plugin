@@ -4,7 +4,7 @@ Donate link: https://front18.com
 Tags: security, sdk, front18
 Requires at least: 5.0
 Tested up to: 6.7
-Stable tag: 1.5.8
+Stable tag: 1.5.9
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -34,6 +34,9 @@ Ao usar essa integração, seu portal ou sistema rodando WordPress ganha proteç
 Não. A integração foi desenhada para operar de modo assíncrono e isolado, garantindo alta compatibilidade.
 
 == Changelog ==
+
+= 1.5.9 =
+* Correcao: na aba Selecao de Midia, o botao "Salvar configuracoes" (que nao grava a selecao e recarregava) fica oculto; o salvar correto ali e o "Salvar selecao".
 
 = 1.5.8 =
 * A mensagem de "Salvo" mostra o modo gravado (proteger tudo x so as selecionadas).
