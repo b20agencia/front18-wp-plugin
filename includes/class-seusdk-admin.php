@@ -321,7 +321,14 @@ class Front18_Admin {
         if ( $scope === 'selected_only' ) { $cfg['display_mode'] = 'blur_media'; }
         update_option( 'front18_synced_config', $cfg );
 
-        $push = $this->push_selection_to_saas( $ids, $scope );
+        // Telemetria opcional da IA (quando o salvar veio de uma varredura da IA).
+        $ai = null;
+        if ( isset( $_POST['ai'] ) ) {
+            $ai_raw = json_decode( wp_unslash( $_POST['ai'] ), true );
+            if ( is_array( $ai_raw ) ) { $ai = $ai_raw; }
+        }
+
+        $push = $this->push_selection_to_saas( $ids, $scope, $ai );
 
         wp_send_json_success( array(
             'total' => count( $ids ),
@@ -335,7 +342,7 @@ class Front18_Admin {
      * api_key + webhook_secret. A base do SaaS é derivada da URL do SDK. Sem webhook_secret o
      * canal ainda não foi estabelecido: é preciso um sync normal (painel -> plugin) antes.
      */
-    private function push_selection_to_saas( array $ids, $scope ) {
+    private function push_selection_to_saas( array $ids, $scope, $ai = null ) {
         $api_key = get_option( 'front18_api_key', '' );
         $secret  = get_option( 'front18_webhook_secret', '' );
         if ( empty( $api_key ) || empty( $secret ) ) {
@@ -368,6 +375,7 @@ class Front18_Admin {
             'body' => wp_json_encode( array(
                 'protected_media_ids' => $ids,
                 'protection_scope'    => $scope,
+                'ai'                  => is_array( $ai ) ? $ai : null,
             ) ),
         ) );
 
@@ -742,6 +750,7 @@ class Front18_Admin {
                 (function() {
                     var sel = new Set();
                     var aiFlagged = new Set(); // ids que a IA marcou como possivel +18 (para o selo persistir ao paginar)
+                    var ultimaIA = null;       // resumo da ultima varredura da IA (telemetria no save manual)
                     var page = 1, totalPages = 1, loaded = false, seeded = false;
                     var $grid = $('#f18_media_grid'), $count = $('#f18_media_count'),
                         $empty = $('#f18_media_empty'), $more = $('#f18_media_more'),
@@ -840,17 +849,19 @@ class Front18_Admin {
                     });
 
                     // Salva a selecao atual. Reaproveitado pelo botao e pelo "salvar sozinho ao terminar" da IA.
-                    function f18Salvar() {
+                    function f18Salvar(aiStats) {
                         var scope = $('input[name="f18_scope"]:checked').val() || 'all';
                         var ids = [];
                         sel.forEach(function(id) { ids.push(id); });
                         $status.text('Salvando...').removeClass('ok');
-                        return $.post(front18_ajax.ajaxurl, {
+                        var dados = {
                             action: 'front18_save_media',
                             security: front18_ajax.nonce,
                             ids: JSON.stringify(ids),
                             scope: scope
-                        }).then(function(res) {
+                        };
+                        if (aiStats) { dados.ai = JSON.stringify(aiStats); }
+                        return $.post(front18_ajax.ajaxurl, dados).then(function(res) {
                             if (res && res.success) {
                                 var d = res.data || {}, push = d.push || {};
                                 var msg = 'Salvo: ' + (d.total || 0) + ' selecionadas.';
@@ -867,7 +878,8 @@ class Front18_Admin {
 
                     $('#f18_media_save').on('click', function() {
                         var $btn = $(this).prop('disabled', true).css('opacity', 0.7);
-                        $.when(f18Salvar()).always(function() { $btn.prop('disabled', false).css('opacity', 1); });
+                        var ai = ultimaIA ? { analisadas: ultimaIA.analisadas, marcadas: ultimaIA.marcadas, aplicado: true, rigor: ultimaIA.rigor } : null;
+                        $.when(f18Salvar(ai)).always(function() { $btn.prop('disabled', false).css('opacity', 1); ultimaIA = null; });
                     });
 
                     // ── IA de sugestão: carrega sob demanda; roda no navegador; imagens não saem do servidor ──
@@ -1013,6 +1025,7 @@ class Front18_Admin {
                             }
                             if (autosel) { updateCount(); }
                             $fill.css('width', '100%');
+                            ultimaIA = { analisadas: analisadas, marcadas: aiFlagged.size, rigor: sens };
 
                             // Escopo "so as selecionadas" so faz sentido se a IA de fato pre-selecionou.
                             if (autosel && aiFlagged.size > 0) {
@@ -1027,7 +1040,8 @@ class Front18_Admin {
                                 $prog.text(rel + ' Nenhuma passou do limiar de nudez explícita (maior score ' + Math.round(maiorScore * 100) + '%).');
                             } else if (autosel && autosave) {
                                 $prog.text(rel + ' Aplicando no site...');
-                                var r = await f18Salvar();
+                                var r = await f18Salvar({ analisadas: analisadas, marcadas: aiFlagged.size, aplicado: true, rigor: sens });
+                                ultimaIA = null;
                                 $prog.text(rel + (r && r.ok ? ' Aplicado no site automaticamente.' : ' Salvo, mas não publicou agora.') + ' Você pode revisar a grade e remover falsos positivos quando quiser.');
                             } else if (autosel) {
                                 $prog.text(rel + ' Pré-selecionadas na grade — revise, desmarque o que não deve entrar e clique em Salvar seleção.');
