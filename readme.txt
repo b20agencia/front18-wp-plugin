@@ -4,7 +4,7 @@ Donate link: https://front18.com
 Tags: security, sdk, front18
 Requires at least: 5.0
 Tested up to: 6.7
-Stable tag: 1.4.1
+Stable tag: 1.4.2
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -34,6 +34,9 @@ Ao usar essa integração, seu portal ou sistema rodando WordPress ganha proteç
 Não. A integração foi desenhada para operar de modo assíncrono e isolado, garantindo alta compatibilidade.
 
 == Changelog ==
+
+= 1.4.2 =
+* IA de sugestao: correcao — todas as imagens davam o mesmo score (tf carregado em duplicidade). Agora carrega so o nsfwjs (tf embutido); tf.min.js saiu do pacote (~1,5MB menor).
 
 = 1.4.1 =
 * IA de sugestao: correcao — a analise marcava 0. Agora carrega cada imagem de forma fresca (analisa a pagina inteira, nao so o visivel) e com crossOrigin, limiar mais sensivel, e relatorio de lidas/erro/sugeridas (scores no Console F12).

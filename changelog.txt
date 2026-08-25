@@ -1,5 +1,12 @@
 === Front18 Security Integration Changelog ===
 
+= 1.4.2 =
+* IA de sugestao: correcao — todas as imagens davam o MESMO score (0.10/0.08/0.03/0.62) e a
+  marcacao nunca acontecia. Causa raiz: o nsfwjs.min.js ja empacota o TensorFlow.js inteiro, e o
+  plugin ainda carregava o tf.min.js separado — o backend WebGL era registrado duas vezes e a
+  leitura de pixels (fromPixels) passava a devolver um tensor constante. Agora o plugin carrega
+  SO o nsfwjs (com o tf embutido); o tf.min.js saiu do pacote (plugin ~1,5MB menor).
+
 = 1.4.1 =
 * IA de sugestao: correcao — a analise concluia com 0 marcadas. Duas causas: imagens fora da
   tela (lazy-load) eram puladas, e a leitura do <img> exibido podia falhar por canvas "tainted".

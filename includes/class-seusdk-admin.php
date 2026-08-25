@@ -85,7 +85,7 @@ class Front18_Admin {
             'ajaxurl'  => admin_url( 'admin-ajax.php' ),
             'nonce'    => wp_create_nonce( 'front18_admin_nonce' ),
             // IA de sugestão (embarcada; carregada sob demanda só ao clicar em "Analisar").
-            'ai_tf'    => FRONT18_PLUGIN_URL . 'assets/ai/tf.min.js',
+            // O nsfwjs.min.js ja traz o TensorFlow.js embutido — nao carregar tf separado.
             'ai_nsfw'  => FRONT18_PLUGIN_URL . 'assets/ai/nsfwjs.min.js',
             'ai_model' => FRONT18_PLUGIN_URL . 'assets/ai/',
         ));
@@ -849,7 +849,10 @@ class Front18_Admin {
                     }
                     async function f18EnsureModel() {
                         if (aiModel) { return aiModel; }
-                        if (typeof tf === 'undefined')     { await f18LoadScript(front18_ajax.ai_tf); }
+                        // O nsfwjs.min.js JA empacota o TensorFlow.js inteiro. Carregar o tf.min.js
+                        // separado registrava o backend WebGL duas vezes e o fromPixels passava a
+                        // devolver um tensor constante (todas as imagens davam o MESMO score). Por
+                        // isso carregamos SO o nsfwjs.
                         if (typeof nsfwjs === 'undefined') { await f18LoadScript(front18_ajax.ai_nsfw); }
                         aiModel = await nsfwjs.load(front18_ajax.ai_model, { size: 224 });
                         return aiModel;
