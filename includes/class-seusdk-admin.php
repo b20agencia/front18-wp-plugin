@@ -885,7 +885,11 @@ class Front18_Admin {
                         return $.post(front18_ajax.ajaxurl, dados).then(function(res) {
                             if (res && res.success) {
                                 var d = res.data || {}, push = d.push || {};
-                                var msg = 'Salvo: ' + (d.total || 0) + ' selecionadas.';
+                                // Mostramos o MODO que o servidor de fato gravou (d.scope). Se o usuario
+                                // escolheu "so as selecionadas" mas aqui aparecer "proteger tudo", o
+                                // escopo nao chegou/gravou — o diagnostico fica visivel, sem adivinhacao.
+                                var modo = (d.scope === 'selected_only') ? 'proteger só as selecionadas' : 'proteger tudo';
+                                var msg = 'Salvo — modo: ' + modo + ' (' + (d.total || 0) + ' marcada(s)).';
                                 if (push.ok) { msg += ' Aplicado no site.'; }
                                 else if (push.reason === 'sem_canal') { msg += ' Sincronize com o painel Front18 uma vez para publicar no site.'; }
                                 else { msg += ' Aviso: nao foi possivel publicar no site agora.'; }
