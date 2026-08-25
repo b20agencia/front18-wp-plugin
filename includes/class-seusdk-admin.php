@@ -714,6 +714,7 @@ class Front18_Admin {
                 // Seleção de mídia (grade lê a Biblioteca local; salva e empurra para o SaaS)
                 (function() {
                     var sel = new Set();
+                    var aiFlagged = new Set(); // ids que a IA marcou como possivel +18 (para o selo persistir ao paginar)
                     var page = 1, totalPages = 1, loaded = false, seeded = false;
                     var $grid = $('#f18_media_grid'), $count = $('#f18_media_count'),
                         $empty = $('#f18_media_empty'), $more = $('#f18_media_more'),
@@ -742,6 +743,7 @@ class Front18_Admin {
                             $it.append('<span class="f18-check"></span>');
                             $it.append($('<span class="f18-title"></span>').text(m.title || ('#' + m.id)));
                             if (on) { $it.addClass('f18-on'); }
+                            if (aiFlagged.has(m.id)) { $it.addClass('f18-ai-sug'); $it.append('<span class="f18-ai-flag">possível +18</span>'); }
                             $grid.append($it);
                         });
                     }
@@ -874,6 +876,15 @@ class Front18_Admin {
                         });
                     }
 
+                    // Marca (e pre-seleciona) na grade uma imagem que a IA sugeriu, se ela estiver renderizada.
+                    function f18MarcaTile(id) {
+                        var tile = $grid.find('.front18-media-item[data-id="' + id + '"]');
+                        if (tile.length) {
+                            tile.addClass('f18-on f18-ai-sug');
+                            if (!tile.find('.f18-ai-flag').length) { tile.append('<span class="f18-ai-flag">possível +18</span>'); }
+                        }
+                    }
+
                     $('#f18_ai_run').on('click', async function() {
                         var $btn = $(this);
                         var $prog = $('#f18_ai_progress').show();
@@ -882,48 +893,61 @@ class Front18_Admin {
                         $prog.text('Carregando o modelo (só na primeira vez, alguns segundos)...');
                         try {
                             var model = await f18EnsureModel();
-                            var tiles = $grid.find('.front18-media-item').toArray();
-                            if (!tiles.length) { $prog.text('Carregue a biblioteca antes de analisar.'); return; }
+
+                            // 1) Levanta TODAS as imagens da biblioteca (respeitando os filtros atuais),
+                            //    nao so a pagina carregada na grade — pagina por pagina, so os IDs+URLs.
+                            $prog.text('Levantando a lista completa de imagens...');
+                            var itens = [], p = 1, tp = 1;
+                            do {
+                                var resList = await $.post(front18_ajax.ajaxurl, params({ page: p, per_page: 100 }));
+                                var dl = (resList && resList.data) ? resList.data : {};
+                                (dl.data || []).forEach(function(mm) {
+                                    if (mm && mm.id) { itens.push({ id: parseInt(mm.id, 10), url: mm.url || mm.full_url || '' }); }
+                                });
+                                tp = dl.total_pages || 1;
+                                p++;
+                            } while (p <= tp);
+
+                            if (!itens.length) { $prog.text('Nenhuma imagem para analisar.'); return; }
+
+                            // 2) Classifica cada uma (imagem carregada fresca, no navegador).
                             $btn.text('Analisando...');
-                            var analisadas = 0, comErro = 0, flagged = 0, maiorScore = 0;
-                            for (var i = 0; i < tiles.length; i++) {
-                                $prog.text('Analisando ' + (i + 1) + ' de ' + tiles.length + '...');
-                                var tileImg = tiles[i].querySelector('img');
-                                var src = tileImg ? (tileImg.currentSrc || tileImg.getAttribute('src') || '') : '';
-                                if (!src) { comErro++; continue; }
+                            var analisadas = 0, comErro = 0, novas = 0, maiorScore = 0;
+                            for (var i = 0; i < itens.length; i++) {
+                                $prog.text('Analisando ' + (i + 1) + ' de ' + itens.length + '...');
+                                if (!itens[i].url) { comErro++; continue; }
                                 var el;
-                                try { el = await f18LoadForAI(src); }
+                                try { el = await f18LoadForAI(itens[i].url); }
                                 catch (e) { comErro++; continue; }
                                 try {
                                     var preds = await model.classify(el);
-                                    var m = {};
-                                    preds.forEach(function(p) { m[p.className] = p.probability; });
-                                    var explicito = (m.Porn || 0) + (m.Hentai || 0);
-                                    var sensual = m.Sexy || 0;
+                                    var mm = {};
+                                    preds.forEach(function(pr) { mm[pr.className] = pr.probability; });
+                                    var explicito = (mm.Porn || 0) + (mm.Hentai || 0);
+                                    var sensual = mm.Sexy || 0;
                                     var score = Math.max(explicito, sensual);
                                     if (score > maiorScore) { maiorScore = score; }
                                     analisadas++;
-                                    if (window.console && console.log) {
-                                        console.log('[Front18 IA]', (src.split('/').pop() || src),
-                                            'Porn', (m.Porn || 0).toFixed(2), 'Hentai', (m.Hentai || 0).toFixed(2),
-                                            'Sexy', (m.Sexy || 0).toFixed(2), 'Neutral', (m.Neutral || 0).toFixed(2));
-                                    }
                                     if (explicito >= 0.45 || sensual >= 0.6) {
-                                        tiles[i].classList.add('f18-ai-sug');
-                                        if (!tiles[i].querySelector('.f18-ai-flag')) {
-                                            var flag = document.createElement('span');
-                                            flag.className = 'f18-ai-flag';
-                                            flag.textContent = 'possível +18';
-                                            tiles[i].appendChild(flag);
-                                        }
-                                        flagged++;
+                                        var id = itens[i].id;
+                                        aiFlagged.add(id);
+                                        if (!sel.has(id)) { sel.add(id); novas++; } // PRE-SELECIONA por padrao
+                                        f18MarcaTile(id);
                                     }
                                 } catch (e) { comErro++; }
                             }
-                            var msg = 'Análise: ' + analisadas + ' lida(s), ' + flagged + ' sugerida(s).';
-                            if (comErro)   { msg += ' ' + comErro + ' não pôde(ram) ser lida(s) pelo navegador (outra origem/CDN).'; }
-                            if (analisadas && !flagged) { msg += ' Maior score visto: ' + Math.round(maiorScore * 100) + '% (abaixo do limiar). Abra o Console (F12) para ver os scores por imagem.'; }
-                            else if (flagged) { msg += ' Revise e clique para confirmar as que são +18.'; }
+                            updateCount();
+
+                            // Se a IA sugeriu algo, faz sentido o escopo ser "so as selecionadas" —
+                            // senao a selecao fina nao teria efeito (o modo "tudo" borra tudo).
+                            if (aiFlagged.size > 0) {
+                                $('input[name="f18_scope"][value="selected_only"]').prop('checked', true);
+                            }
+
+                            var msg = 'Análise: ' + analisadas + ' imagem(ns) lida(s). ' + aiFlagged.size + ' marcada(s) como possível +18 e já pré-selecionada(s).';
+                            if (comErro) { msg += ' ' + comErro + ' não pôde(ram) ser lida(s) pelo navegador (outra origem/CDN).'; }
+                            if (analisadas && !aiFlagged.size) { msg += ' Maior score visto: ' + Math.round(maiorScore * 100) + '% (abaixo do limiar).'; }
+                            else if (aiFlagged.size) { msg += ' Revise a grade e DESMARQUE as que não deveriam entrar; depois clique em Salvar seleção.'; }
                             $prog.text(msg);
                         } catch (e) {
                             $prog.text('Não foi possível analisar agora: ' + (e && e.message ? e.message : 'falha ao carregar a IA') + '.');

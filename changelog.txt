@@ -1,5 +1,14 @@
 === Front18 Security Integration Changelog ===
 
+= 1.4.3 =
+* IA de sugestao — dois avancos pedidos em uso:
+  1) PRE-SELECAO: as imagens marcadas como possivel +18 ja entram SELECIONADas por padrao. Voce
+     revisa a grade e DESMARCA as que discordar; depois clica em Salvar selecao. (Continua sendo
+     voce quem decide e salva — a IA so adianta o trabalho.)
+  2) BIBLIOTECA INTEIRA: a analise deixa de olhar so a pagina carregada no preview e passa a
+     varrer TODAS as imagens captadas (respeitando os filtros ativos de nome/data/pasta), pagina
+     a pagina. Ao marcar algo, o escopo muda para "so as selecionadas" para a selecao ter efeito.
+
 = 1.4.2 =
 * IA de sugestao: correcao — todas as imagens davam o MESMO score (0.10/0.08/0.03/0.62) e a
   marcacao nunca acontecia. Causa raiz: o nsfwjs.min.js ja empacota o TensorFlow.js inteiro, e o
